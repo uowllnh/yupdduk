@@ -37,6 +37,8 @@ export default function Home() {
           <button>{menu.name}</button>
         </Link>
       ))}
+      <Link href={`/cart`}>
+      <button> 장바구니</button></Link>
     </section>
   );
 }
