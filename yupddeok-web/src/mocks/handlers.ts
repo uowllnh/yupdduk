@@ -7,6 +7,7 @@ const menus = [
     category: "엽기",
     price: 14000,
     image: "/img/ttok-001.jpg",
+    spiceTypesAllowed: ["A", "B"],
   },
 
     {
@@ -338,7 +339,83 @@ const menus = [
 ] as const;
 
 
+const SPICE_OPTIONS = {
+  A: {
+  required: true,
+  options : [
+  { value: "hot", name: "매운맛" },
+  { value: "original", name: "오리지널" },
+  { value: "begin", name: "초보맛" },
+  { value: "mild", name: "착한맛" },
+  { value: "original_low", name: "오리지널(저당)" },
+  { value: "mild_low", name: "착한맛(저당)" }
+],
+},
 
+B: {
+    required: true,
+    options: [
+      { value: "original", name: "오리지널" },
+      { value: "mild", name: "착한맛" },
+    ],
+  },
+} as const;
+
+
+const CATEGORY_TO_SPICE_TYPE: Record<string, keyof typeof SPICE_OPTIONS> = {
+  엽기: "A",
+  엽기닭볶음탕: "A",
+  로제: "B",
+  마라: "B",
+  마라로제: "B",
+} as const;
+
+
+
+const TOPPING_OPTIONS = {
+  A: {
+  required: false,
+  options : [
+  { value: "ttok_more", name: "떡 추가", price: 1000},
+  { value: "fish_more", name: "어묵 추가", price: 1000},
+  { value: "cabbage", name: "양배추" , price: 1000},
+  { value: "green_onion", name: "대파", price: 1000 },
+  { value: "beef", name: "우삼겹" , price: 3000},
+  { value: "fried_tofu", name: "통유부" , price: 1000},
+  { value: "cheese_dumpling", name: "퐁당치즈만두" , price: 2000},
+  { value: "glass_noodle", name: "중국당면" , price: 2500},
+  { value: "bunmoja", name: "분모자" , price: 2500},
+]
+},
+
+B: {
+    required: false,
+    options: [
+  { value: "mozza", name: "모짜치즈", price: 3000 },
+  { value: "corn",          name: "콘마요",   price: 2500 },
+  { value: "ham",                name: "햄",       price: 1000 },
+  { value: "bacon",              name: "베이컨",   price: 3000 },
+  { value: "egg",                name: "계란",     price: 1500 },
+  { value: "quail_egg",          name: "메추리알", price: 1000 },
+  { value: "udon_noodle",        name: "우동사리", price: 2000 },
+  { value: "glass_noodle",       name: "당면사리", price: 2000 },
+]
+,
+  },
+
+  X: {},
+} as const;
+
+type ToppingType = keyof typeof TOPPING_OPTIONS; // "A" | "B"
+
+const CATEGORY_TO_TOPPING_TYPE: Record<string, readonly ToppingType[]> = {
+  엽기: ["A", "B"],
+  엽기닭볶음탕: ["A", "B"],
+  로제: ["B"],
+  마라: ["A", "B"],
+  마라로제: ["A", "B"],
+  닭발: ["A", "B"]
+} as const;
 
 
 // ✅ 메뉴 상세 (id로 찾기)
@@ -353,7 +430,7 @@ export const handlers = [
     const menu = menus.find((m) => m.id === id);
     console.log("MSW HIT id:", id);
     console.log("menus:", menus.map(m => m.id));
-
+    
     // 없으면 404
     if (!menu) {
       return HttpResponse.json(
@@ -362,7 +439,22 @@ export const handlers = [
       );
     }
 
-    return HttpResponse.json(menu);
+    const spiceType = CATEGORY_TO_SPICE_TYPE[menu.category] ; // 기본값
+    const spice = SPICE_OPTIONS[spiceType];
+
+    const allowed: ToppingType[] =
+    (menu as any).spiceTypesAllowed ??
+    (CATEGORY_TO_TOPPING_TYPE[menu.category] ?? ["X"]);
+
+  const toppingChoices = allowed.map((t) => ({
+    type: t,
+    ...TOPPING_OPTIONS[t],
+  }));
+    
+
+
+
+    return HttpResponse.json({...menu,spice,toppingChoices,});
   }),
 
   
