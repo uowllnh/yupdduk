@@ -28,7 +28,6 @@ export default function Home() {
 }, []);
 
 
-  if (loading) return <p>로딩중...</p>;
 
   return (
     <section>
@@ -37,8 +36,11 @@ export default function Home() {
           <button>{menu.name}</button>
         </Link>
       ))}
-      <Link href={`/cart`}>
-      <button> 장바구니</button></Link>
+     
+       <Link href={`/order`}>
+      <button> 주문하기</button></Link>
+       <Link href={`/cart`}>
+      <button> 장바구니(임시버튼)</button></Link>
     </section>
   );
 }
