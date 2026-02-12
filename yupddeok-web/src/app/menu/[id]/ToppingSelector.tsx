@@ -2,20 +2,22 @@
 import { useEffect, useState } from "react";
 
 type ToppingOption = { value: string; name: string; price: number};
-type SelectedTopping = { value: string; name: string; price: number; count: number;};
+type SelectedTopping = { value: string; name: string; price: number; count: number};
+
 
 type Props = {
   type: "A" | "B";
   options: ToppingOption[];
   required: boolean;
   max: number;
-  onChange: (select: SelectedTopping[]) => void;
+  onChange: (type: "A" | "B", select: SelectedTopping[]) => void; // ✅ 변경
 };
 
-export default function ToppingSelector({ options, required, type, max, onChange }: Props) {
+
+export default function ToppingSelector({ options, type, max, onChange }: Props) {
   const safeOptions = options ?? [];
   const [selected, setSelected] = useState<SelectedTopping[]>([]);
-  const [countingNum, setCountingNum] = useState(1);
+
 
 const changeCount = (value: string, diff: number) => {
   setSelected(prev =>
@@ -28,14 +30,10 @@ const changeCount = (value: string, diff: number) => {
 };
 
 
-const buttonCal = (cal:number) => {
-    setCountingNum(prev =>
-      prev + cal >= 0 ? prev + cal : prev
-    );}
-
   useEffect(() => {
-    onChange(selected);
-  }, [selected, onChange]);
+  onChange(type, selected);
+}, [selected, type, onChange]);
+
 
   const toggle = (opt: ToppingOption, checked: boolean) => {
     setSelected(prev => {
@@ -73,8 +71,6 @@ const buttonCal = (cal:number) => {
               }}
             /> 
             
-
-           
             {opt.name} - {opt.price}원  
              {type === "B" && isChecked &&
               <div>

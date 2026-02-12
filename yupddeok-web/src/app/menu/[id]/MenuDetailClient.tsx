@@ -1,24 +1,30 @@
 "use client";
-import { useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import SpiceSelector from "./SpiceSelector";
 import ToppingSelector from "./ToppingSelector";
-import MenuCount from "./MenuCount";
+import Link from "next/link";
+import { CART_KEY } from "@/constants/storageKeys";
+import type { CartState, CartItem } from "@/types/cart";
 
-type SpiceOption = { value: string; label: string }; //맵기 객체 사전 설정 및 객체 배열 
-type ToppingOption = { type: "A" | "B";
+type SpiceOption = { value: string; label: string };
+type ToppingOption = {
+  type: "A" | "B";
   required: boolean;
-  options: { value: string; label: string; price: number;}[]; }; //토핑 옵션의 각 형태와 그 배열(options)
+  options: { value: string; name: string; price: number; count: number }[];
+};
+type SpiceConfig = { required: boolean; options: SpiceOption[] };
+type SelectedTopping = { value: string; name: string; price: number; count: number;};
 
-type SpiceConfig = {
-  required: boolean;
-  options: SpiceOption[];
-}; //맵기 옵션 전체..?
-
-
-type Menu = { id: string; name: string; price: number; explan?: string; spice?: SpiceConfig; toppingChoices: ToppingOption[]; };
-
-
+type Menu = {
+  id: string;
+  name: string;
+  price: number;
+  explan?: string;
+  spice?: SpiceConfig;
+  toppingChoices: ToppingOption[];
+};
 
 export default function MenuDetailClient({ id }: { id: string }) {
   const { data, isLoading, isError } = useQuery<Menu>({
@@ -30,109 +36,134 @@ export default function MenuDetailClient({ id }: { id: string }) {
     },
   });
 
-  const [cart,setCart] = useState<CartItem[]>([]);
-  const [selectedSpice, setSelectedSpice] = useState<{
-  value: string;
-  name: string;} | null>(null);
+  const handleToppingChange = useCallback(
+    (type: "A" | "B", select: SelectedTopping[]) => {
+      setSelectedToppingsByType((prev) => ({
+        ...prev,
+        [type]: select,
+      }));
+    },
+    []
+  );
 
-const [selectedToppings, setSelectedToppings] = useState<
-  { name: string; price: number }[]>([]); // const [상태값, 상태변경함수] = useState(초기값);
 
+  const emptyCartState: CartState = {
+    items: [],
+    delivery: { type: "DELIVERY" },
+    requestNote: "",
+    price: { itemsTotal: 0, deliveryFee: 0, discount: 0, finalTotal: 0 },
+  };
+  const [menuCount, setMenuCount] = useState(1);
+  const [cartState, setCartState] = useState<CartState>(() => {
+    if (typeof window === "undefined") return emptyCartState;
+    try {
+      const saved = localStorage.getItem(CART_KEY);
+      return saved ? (JSON.parse(saved) as CartState) : emptyCartState;
+    } catch {
+      return emptyCartState;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(cartState));
+    } catch {}
+  }, [cartState]);
+
+const [selectedToppingsByType, setSelectedToppingsByType] = useState<{
+  A: SelectedTopping[];
+  B: SelectedTopping[];
+}>({ A: [], B: [] });
+
+const selectedToppings = [
+  ...selectedToppingsByType.A,
+  ...selectedToppingsByType.B,
+];
+
+
+  const [selectedSpice, setSelectedSpice] = useState<{ value: string; name: string } | null>(null);
 
   if (isLoading) return <p>로딩중...</p>;
-  if (isError) return <p>없는 메뉴입니다.</p>;
+  if (isError || !data) return <p>없는 메뉴입니다.</p>;
 
   const spice = data.spice;
-  const topping = data.toppingChoices ?? []; //있으면 배열 나열, 없으면 빈 배열
+  const topping = data.toppingChoices ?? [];
 
-type CartItem = {
-  id: string;
-  name: string;
-  price: number;
-
-  selectedSpice?: {
-    value: string;
-    name: string;
-  };
-
-  selectedToppings: {
-    name: string;
-    price: number;
-  }[];
+const toppingsTotal = () => {
+       const price = selectedToppings.reduce ((sum, t) => sum + t.price * t.count, 0);
+      return price
 };
 
-
-const addToCart = () => {
-  setCart(prev => [
-    ...prev,
-    {
+  const addToCart = () => {
+     
+    const newItem: CartItem = {
       id: data.id,
       name: data.name,
       price: data.price,
-      explan: data.explan,
       selectedSpice: selectedSpice ?? undefined,
       selectedToppings,
-    },
-  ]);
-};
+      toppingsPrice: toppingsTotal(),
+      count: menuCount, 
 
- console.log("selectedToppings:", selectedToppings);
+    };
 
-return (
-  <div>
+    setCartState((prev) => ({
+      ...prev,
+      items: [...(Array.isArray(prev.items) ? prev.items : []), newItem],
+      price: {
+        ...prev.price,
+        itemsTotal: prev.price.itemsTotal + data.price + newItem.toppingsPrice * menuCount,
+        finalTotal: prev.price.finalTotal + data.price + newItem.toppingsPrice,
+      },
+    }));
+  };
+
+  
+
+
+  return (
+    <div>
+      <Link href="/">
+        <button type="button">홈으로 가기</button>
+      </Link>
+
+      <h1>{data.name}</h1>
+      <h2>{data.price.toLocaleString()}원</h2>
+      <p>{data.explan}</p>
+
+         <button type="button" onClick={() => setMenuCount(c => Math.max(1, c - 1))}>-</button>
+          <span>{menuCount}</span>
+          <button type="button" onClick={() => setMenuCount(c => c + 1)}>+</button>
+
     
-    <h1>{data.name}</h1>
-    <h2>{data.price.toLocaleString()}원</h2>
-    <p>{data.explan}</p>
 
-    {spice ? (
-      <SpiceSelector options={spice.options} required={spice.required} onChange={setSelectedSpice} />
-    ) : ( ""
-    )}
+      {spice ? (
+        <SpiceSelector options={spice.options} required={spice.required} onChange={setSelectedSpice} />
+      ) : null}
+
+      {topping.length > 0
+        ? topping.map((choice) => (
+            <div key={choice.type} style={{ marginTop: 16 }}>
+              <ToppingSelector
+  type={choice.type}
+  options={choice.options.map(o => ({
+    value: o.value,
+    name: o.name,   // 필요하면 매핑
+    price: o.price,
+  }))}
+  required={choice.required}
+  max={3}
+  onChange={handleToppingChange}
+/>
 
 
-{topping.length > 0 ? (
-  topping.map((choice) => (
-    <div key={choice.type} style={{ marginTop: 16 }}>
-      <ToppingSelector
-        type={choice.type}
-        options={choice.options}
-        required={choice.required}
-        max={3}
-        onChange={setSelectedToppings}
-      />
+            </div>
+          ))
+        : null}
+
+      <button style={{ marginTop: 16 }} onClick={addToCart}>
+        장바구니 담기
+      </button>
     </div>
-  ))
-) : (
-  ""
-)}
-<button style={{ marginTop: 16 }}
-onClick={addToCart}> 장바구니 담기 </button>
-
-
-<hr style={{ marginTop: 32 }} />
-
-<h3>🛒 장바구니 (테스트)</h3>
-
-{cart.length === 0 ? (
-  <p>비어있음</p>
-) : (
-  <ul>
-    {cart.map((item, index) => (
-      <li key={index}>
-        {item.name} - {item.price.toLocaleString()}원 
-        맵기: {item.selectedSpice?.name ?? "선택 안 함"} / 
-        토핑:{" "}
-        {item.selectedToppings.length > 0
-        ? item.selectedToppings.map(t => t.name).join(", ")
-        : "없음"}
-          </li>
-    ))}
-     
-  </ul>
-)}
-
-  </div>
-);
-
+  );
 }
