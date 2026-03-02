@@ -8,7 +8,7 @@ export default function Home() {
 return(
 <div>
   <Link href={`/store`}>
-      <button> 배달 주문</button></Link>
+      <button> 111 </button></Link>
   <Link href={`/store`}>
       <button> 방문 포장</button></Link>
   <Link href={`/store`}>
