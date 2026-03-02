@@ -42,10 +42,6 @@ const emptyCartState: CartState = {
 
     return (
 <div>
-<Link href="/">
-      <button>뒤로가기</button>
-    </Link>
-
 
 <a>주문하기</a>
 

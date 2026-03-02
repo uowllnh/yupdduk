@@ -64,6 +64,21 @@ export default function MenuDetailClient({ id }: { id: string }) {
     }
   });
 
+  function makeCartKey(params: {
+  menuId: string;
+  spiceValue?: string | null;
+  toppings: SelectedTopping[];
+}) {
+  const spice = params.spiceValue ?? "none";
+
+  const toppingsKey = params.toppings
+    .map((t) => `${t.value}:${t.count}`) // ⭐ count 포함
+    .sort() // ⭐ 순서 무시
+    .join(",");
+
+  return `${params.menuId}|spice:${spice}|toppings:${toppingsKey}`;
+}
+
   useEffect(() => {
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(cartState));
@@ -95,37 +110,72 @@ const toppingsTotal = () => {
 };
 
   const addToCart = () => {
-     
-    const newItem: CartItem = {
+  const toppingsPrice = toppingsTotal();
+
+  const key = makeCartKey({
+    menuId: data.id,
+    spiceValue: selectedSpice?.value ?? null,
+    toppings: selectedToppings,
+  });
+
+  setCartState((prev) => {
+    const items = Array.isArray(prev.items) ? prev.items : [];
+
+    const idx = items.findIndex((it: any) => it.key === key);
+
+    // ⭐ 이 메뉴 1개(=menuCount 1개) 가격
+    const unitTotal = data.price + toppingsPrice;
+
+    if (idx >= 0) {
+      // ✅ 같은 구성 존재 → 수량만 증가
+      const nextItems = [...items];
+      const current = nextItems[idx];
+
+      nextItems[idx] = {
+        ...current,
+        count: current.count + menuCount,
+      };
+
+      return {
+        ...prev,
+        items: nextItems,
+        price: {
+          ...prev.price,
+          itemsTotal: prev.price.itemsTotal + unitTotal * menuCount,
+          finalTotal: prev.price.finalTotal + unitTotal * menuCount,
+        },
+      };
+    }
+
+    // ✅ 새로운 구성 → 새로 추가
+    const newItem: any = {
       id: data.id,
       name: data.name,
       price: data.price,
       selectedSpice: selectedSpice ?? undefined,
       selectedToppings,
-      toppingsPrice: toppingsTotal(),
-      count: menuCount, 
-
+      toppingsPrice,
+      count: menuCount,
+      key, // ⭐ 여기!
     };
 
-    setCartState((prev) => ({
+    return {
       ...prev,
-      items: [...(Array.isArray(prev.items) ? prev.items : []), newItem],
+      items: [...items, newItem],
       price: {
         ...prev.price,
-        itemsTotal: prev.price.itemsTotal + data.price + newItem.toppingsPrice * menuCount,
-        finalTotal: prev.price.finalTotal + data.price + newItem.toppingsPrice,
+        itemsTotal: prev.price.itemsTotal + unitTotal * menuCount,
+        finalTotal: prev.price.finalTotal + unitTotal * menuCount,
       },
-    }));
-  };
+    };
+  });
+};
 
   
 
 
   return (
     <div>
-      <Link href="/">
-        <button type="button">홈으로 가기</button>
-      </Link>
 
       <h1>{data.name}</h1>
       <h2>{data.price.toLocaleString()}원</h2>
@@ -146,11 +196,11 @@ const toppingsTotal = () => {
             <div key={choice.type} style={{ marginTop: 16 }}>
               <ToppingSelector
   type={choice.type}
-  options={choice.options.map(o => ({
+  options={(choice.options ?? []). map(o => ({
     value: o.value,
     name: o.name,   // 필요하면 매핑
     price: o.price,
-  }))}
+  }))}  
   required={choice.required}
   max={3}
   onChange={handleToppingChange}
