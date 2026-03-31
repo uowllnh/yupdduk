@@ -1,9 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-html, body {
-  height: 100%;
+@import "tailwindcss";
+
+
+
+:root {
+  --primary: #DF1D25;
+  --primary-yellow: #F7BF00;
+    --primary-orange: #FB6D3A;
+  --bg: #fff7f5;
+  --text: #101E20;
+  --subtext: #666666;
+  --card: #ffffff;
+  --border: #f0d9d5;
 }
 
 body {
