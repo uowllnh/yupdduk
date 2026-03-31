@@ -38,17 +38,13 @@ export default function Home() {
       
       <p>선택한 매장: {storeName ? storeName : "아직 선택 안 함"}</p>
       {menus.map((menu) => (
-        <Link key={menu.id} href={`/menu/${menu.id}`}>
-          <button>{menu.name}</button>
-        </Link>
+        <Link key={menu.id} href={`/menu/${menu.id}`}>{menu.name}</Link>
       ))}
 
       
      
-       <Link href={`/order`}>
-      <button> 주문하기</button></Link>
-       <Link href={`/cart`}>
-      <button> 장바구니(임시버튼)</button></Link>
+       <Link href={`/order`}> 주문하기</Link>
+       <Link href={`/cart`}> 장바구니(임시버튼)</Link>
     </section>
   );
 }

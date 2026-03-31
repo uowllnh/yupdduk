@@ -43,9 +43,7 @@ export default function CartListPage() {
     
   <div>
 
-    <Link href="/">
-      <button>홈으로 가기</button>
-    </Link>
+    <Link href="/">홈으로 가기</Link>
     
     
 
@@ -99,14 +97,10 @@ export default function CartListPage() {
 {cartState.price.itemsTotal}
 
 
-   <Link href="/">
-      <button>메뉴 추가</button>
-    </Link>
+   <Link href="/">메뉴 추가</Link>
 
 
- <Link href="/order">
-      <button>주문하기</button>
-    </Link>
+ <Link href="/order">주문하기</Link>
 
   </div>
 );

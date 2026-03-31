@@ -10,9 +10,7 @@ export default function Completed() {
     return(
     
     <section>
-    <Link href={`/`}>
-      <button> 홈으로 </button>
-      </Link>
+    <Link href={`/`}> 홈으로 </Link>
         <p>주문완료</p>
     </section>
 
