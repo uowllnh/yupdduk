@@ -1,9 +1,16 @@
 // 장바구니 아이템 하나
 export type CartItem = {
+  key?: string;
   id: string;
   name: string;
+  image?: string;
   price: number;
   count: number;
+
+  selectedMenuOption?: {
+    value: string;
+    name: string;
+  };
 
   selectedSpice?: {
     value: string;

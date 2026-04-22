@@ -76,8 +76,9 @@ export default function CartListPage() {
     {cartState.items.map((item, index) => (
       <li key={index}>
         {item.name} - {item.price.toLocaleString()}원 
+        {item.selectedMenuOption ? ` / 메뉴: ${item.selectedMenuOption.name}` : ""}
         {item.selectedSpice
-              ? item.selectedSpice?.name : ""} 
+              ? ` / 맵기: ${item.selectedSpice.name}` : ""} 
               
                
                 <>

@@ -1,461 +1,463 @@
-import { count } from "console";
-import { http, HttpResponse, delay } from "msw";
+import { delay, http, HttpResponse } from "msw";
 
-const menus = [
-  {
-    id: "yup-001",
-    name: "엽기떡볶이",
-    category: "엽기",
-    price: 14000,
-    image: "/img/ttok-001.jpg",
-    spiceTypesAllowed: ["A", "B"],
-  },
+type MenuSection = "MAIN" | "SET" | "DAKBAL"| "SIDE" | "DRINK" | "MEALKIT";
+type SpiceType = "A" | "B";
+type ToppingType = "A" | "B";
 
-    {
-    id: "yup-002",
-    name: "엽기오뎅",
-    category: "엽기",
-    price: 14000,
-    image: "/img/ttok-002.jpg",
-  },
+type MenuSummary = {
+  id: string;
+  name: string;
+  section: MenuSection;
+  sectionLabel: string;
+  price: number;
+  image: string;
+  description?: string;
+};
 
-   {
-    id: "yup-003",
-    name: "엽기반반",
-    category: "엽기",
-    price: 14000,
-    image: "/img/ttok-003.jpg",
-  },
+type SpiceOption = {
+  value: string;
+  name: string;
+};
 
-  {
-    id: "yup-004",
-    name: "엽기분모자떡볶이",
-    category: "엽기",
-    price: 17000,
-    image: "/img/ttok-004.jpg",
-    explan: "떡이 분모자로 변경되어 제공됩니다.",
-  },
+type ToppingOption = {
+  value: string;
+  name: string;
+  price: number;
+};
 
-{
-    id: "rose-001",
-    name: "로제떡볶이",
-    category: "로제",
-    price: 16000,
-    image: "/img/rose-001.jpg",
-  },
+type SpiceConfig = {
+  required: boolean;
+  options: readonly SpiceOption[];
+};
 
-    {
-    id: "rose-002",
-    name: "로제오뎅",
-    category: "로제",
-    price: 16000,
-    image: "/img/rose-002.jpg",
-  },
+type MenuOption = {
+  value: string;
+  name: string;
+};
 
-   {
-    id: "rose-003",
-    name: "로제반반",
-    category: "로제",
-    price: 16000,
-    image: "/img/rose-003.jpg",
-  },
+type MenuOptionConfig = {
+  required: boolean;
+  options: readonly MenuOption[];
+};
 
-  {
-    id: "rose-004",
-    name: "로제분모자떡볶이",
-    category: "로제",
-    price: 19000,
-    image: "/img/rose-004.jpg",
-    explan: "떡이 분모자로 변경되어 제공됩니다.",
-  },
+type ToppingConfig = {
+  required: boolean;
+  options: readonly ToppingOption[];
+};
 
-   {
-    id: "mara-001",
-    name: "마라떡볶이",
-    category: "마라",
-    price: 16000,
-    image: "/img/mara-001.jpg",
-    explan: "떡볶이만 선택 가능, 향신료(산초, 잠두 등) 포함",
-  },
+type MenuConfig = {
+  section: MenuSection;
+  spiceType?: SpiceType;
+  toppingTypes?: readonly ToppingType[];
+};
 
-    {
-    id: "mararose-001",
-    name: "마라로제떡볶이",
-    category: "마라로제",
-    price: 18000,
-    image: "/img/mararose-001.jpg",
-    explan: "떡볶이만 선택 가능, 향신료(산초, 잠두 등) 포함",
-  },
+type MenuSeed = {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  description?: string;
+  config: MenuConfig;
+};
 
-    {
-    id: "yupdak-001",
-    name: "엽기닭볶음탕",
-    category: "엽기닭볶음탕",
-    price: 24000,
-    image: "/img/yupdak-001.jpg",
-  },
-
-
-
-  {
-    id: "set-001",
-    name: "실속세트",
-    category: "세트",
-    price: 17500,
-    image: "/img/set-001.jpg",
-    explan: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1)",
-  },
-
-   {
-    id: "set-002",
-    name: "베스트세트",
-    category: "세트",
-    price: 20000,
-    image: "/img/set-002.jpg",
-    explan: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1) + 중국당면"
-  },
-
-   {
-    id: "set-003",
-    name: "스페셜세트",
-    category: "세트",
-    price: 25000,
-    image: "/img/set-003.jpg",
-    explan: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1) + 중국당면 + 엽봉(5개)"
-  },
-
-     {
-    id: "set-004",
-    name: "닭발세트",
-    category: "세트",
-    price: 17500,
-    image: "/img/set-004.jpg",
-    explan: "엽기닭발메뉴 (무뼈닭발/ 국물닭발/ 오돌뼈 중 택1) + 주먹감밥 + 계란찜"
-  },
-
-   {
-    id: "dak-001",
-    name: "엽기무뼈닭발",
-    category: "닭발",
-    price: 15000,
-    image: "/img/dak-001.jpg",
-  },
-
-     {
-    id: "dak-002",
-    name: "엽기국물닭발",
-    category: "닭발",
-    price: 15000,
-    image: "/img/dak-002.jpg",
-  },
-
-     {
-    id: "dak-003",
-    name: "엽기오돌뼈",
-    category: "닭발",
-    price: 14000,
-    image: "/img/dak-003.jpg",
-  },
-
-  {
-    id: "kit-001",
-    name: "엽떡밀키트",
-    category: "밀키트",
-    price: 18000,
-    image: "/img/kit-001.jpg",
-    explan: "2개부터 주문 가능합니다. 음료, 단무지, 수저세트 미제공"
-  },
-
-  {
-    id: "side-001",
-    name: "엽기오돌뼈밥",
-    category: "사이드",
-    price: 4500,
-    image: "/img/side-001.jpg",
-  },
-
-    {
-    id: "side-002",
-    name: "참치마요밥",
-    category: "사이드",
-    price: 3500,
-    image: "/img/side-002.jpg",
-  },
-
-    {
-    id: "side-003",
-    name: "주먹김밥 (셀프)",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-003.jpg",
-  },
-
-    {
-    id: "side-004",
-    name: "계란찜",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-004.jpg",
-  },
-
-    {
-    id: "side-005",
-    name: "계란야채죽",
-    category: "사이드",
-    price: 5000,
-    image: "/img/side-005.jpg",
-  },
-
-    {
-    id: "side-006",
-    name: "순대",
-    category: "사이드",
-    price: 3000,
-    image: "/img/side-006.jpg",
-  },
-
-  {
-    id: "side-007",
-    name: "오뎅튀김 (15개)",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-007.jpg",
-  },
-
-    {
-    id: "side-008",
-    name: "모둠튀김",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-008.jpg",
-    explan: "만두(2개) + 김말이(1개) + 야채튀김(1개)"
-  },
-
-  {
-    id: "side-009",
-    name: "만두 (4개)",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-009.jpg",
-  },
-
-    {
-    id: "side-010",
-    name: "김말이 (3개)",
-    category: "사이드",
-    price: 4500,
-    image: "/img/side-010.jpg",
-  },
-
-  {
-    id: "side-011",
-    name: "야채튀김 (1개)",
-    category: "사이드",
-    price: 1000,
-    image: "/img/side-011.jpg",
-  },
-
-
-    {
-    id: "side-012",
-    name: "꿔바로우 (5개)",
-    category: "사이드",
-    price: 5900,
-    image: "/img/side-012.jpg",
-  },
-
-    {
-    id: "side-013",
-    name: "엽봉 (5개)",
-    category: "사이드",
-    price: 5000,
-    image: "/img/side-013.jpg",
-    explan: "마늘간장 후라이드 봉"
-  },
-
-    {
-    id: "side-014",
-    name: "바삭치즈만두 (7개)",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-014.jpg",
-    explan: "치즈 4종 (모짜렐라, 고다, 체다, 크림)으로 만든 만두"
-  },
-
-
-    {
-    id: "side-015",
-    name: "엽도그 (1개)",
-    category: "사이드",
-    price: 2000,
-    image: "/img/side-015.jpg",
-  },
-
-
-    {
-    id: "side-016",
-    name: "감자채튀김",
-    category: "사이드",
-    price: 2500,
-    image: "/img/side-016.jpg",
-    explan: "엽기시즈닝(버터갈릭맛) 1개 포함"
-  },
-
-
-    {
-    id: "side-017",
-    name: "엽기시즈닝 (버터갈릭맛)",
-    category: "사이드",
-    price: 300,
-    image: "/img/side-017.jpg",
-  },
-
-
-    {
-    id: "side-018",
-    name: "공깃밥",
-    category: "사이드",
-    price: 1000,
-    image: "/img/side-018.jpg",
-  },
-
-
-    {
-    id: "side-019",
-    name: "단무지 (1개)",
-    category: "사이드",
-    price: 500,
-    image: "/img/side-019.jpg",
-  },
-
-  {
-    id: "drink-001",
-    name: "음료 (유산균)",
-    category: "음료",
-    price: 1000,
-    image: "/img/drink-001.jpg",
-  },
-
-
-] as const;
+const SECTION_LABELS: Record<MenuSection, string> = {
+  MAIN: "메인",
+  SET: "세트",
+  DAKBAL: "닭발",
+  SIDE: "사이드",
+  DRINK: "음료",
+  MEALKIT: "밀키트",
+};
 
 
 
 
 
-const SPICE_OPTIONS = {
+const SPICE_OPTIONS: Record<SpiceType, SpiceConfig> = {
   A: {
-  required: true,
-  options : [
-  { value: "hot", name: "매운맛" },
-  { value: "original", name: "오리지널" },
-  { value: "begin", name: "초보맛" },
-  { value: "mild", name: "착한맛" },
-  { value: "original_low", name: "오리지널(저당)" },
-  { value: "mild_low", name: "착한맛(저당)" }
-],
-},
-
-B: {
+    required: true,
+    options: [
+      { value: "hot", name: "매운맛" },
+      { value: "original", name: "오리지널" },
+      { value: "begin", name: "초보맛" },
+      { value: "mild", name: "착한맛" },
+    ],
+  },
+  B: {
     required: true,
     options: [
       { value: "original", name: "오리지널" },
       { value: "mild", name: "착한맛" },
     ],
   },
-} as const;
+};
 
-
-const CATEGORY_TO_SPICE_TYPE: Record<string, keyof typeof SPICE_OPTIONS> = {
-  엽기: "A",
-  엽기닭볶음탕: "A",
-  로제: "B",
-  마라: "B",
-  마라로제: "B",
-} as const;
-
-
-
-const TOPPING_OPTIONS = {
+const TOPPING_OPTIONS: Record<ToppingType, ToppingConfig> = {
   A: {
-  required: false,
-  options : [
-  { value: "ttok_more", name: "떡 추가", price: 1000},
-  { value: "fish_more", name: "어묵 추가", price: 1000},
-  { value: "cabbage", name: "양배추" , price: 1000},
-  { value: "green_onion", name: "대파", price: 1000 },
-  { value: "beef", name: "우삼겹" , price: 3000},
-  { value: "fried_tofu", name: "통유부" , price: 1000},
-  { value: "cheese_dumpling", name: "퐁당치즈만두" , price: 2000},
-  { value: "glass_noodle", name: "중국당면" , price: 2500},
-  { value: "bunmoja", name: "분모자" , price: 2500},
-]
-},
-
-B: {
     required: false,
     options: [
-  { value: "mozza", name: "모짜치즈", price: 3000 },
-  { value: "corn",          name: "콘마요",   price: 2500 },
-  { value: "ham",                name: "햄",       price: 1000 },
-  { value: "bacon",              name: "베이컨",   price: 3000 },
-  { value: "egg",                name: "계란",     price: 1500 },
-  { value: "quail_egg",          name: "메추리알", price: 1000 },
-  { value: "udon_noodle",        name: "우동사리", price: 2000 },
-  { value: "glass_noodle",       name: "당면사리", price: 2000 },
-]
-,
+      { value: "ttok_more", name: "떡 추가", price: 1000 },
+      { value: "fish_more", name: "어묵 추가", price: 1000 },
+      { value: "cabbage", name: "양배추", price: 1000 },
+      { value: "green_onion", name: "대파", price: 1000 },
+      { value: "beef", name: "우삼겹", price: 3000 },
+      { value: "fried_tofu", name: "통유부", price: 1000 },
+      { value: "cheese_dumpling", name: "퐁당치즈만두", price: 2000 },
+      { value: "glass_noodle", name: "중국당면", price: 2500 },
+      { value: "bunmoja", name: "분모자", price: 2500 },
+    ],
   },
+  B: {
+    required: false,
+    options: [
+      { value: "mozza", name: "모짜치즈", price: 3000 },
+      { value: "corn", name: "콘마요", price: 2500 },
+      { value: "ham", name: "햄", price: 1000 },
+      { value: "bacon", name: "베이컨", price: 3000 },
+      { value: "egg", name: "계란", price: 1500 },
+      { value: "quail_egg", name: "메추리알", price: 1000 },
+      { value: "udon_noodle", name: "우동사리", price: 2000 },
+      { value: "glass_noodle", name: "당면사리", price: 2000 },
+    ],
+  },
+};
 
-  X: {},
-} as const;
+const YUPDDEOK_MENU_OPTIONS: MenuOptionConfig = {
+  required: true,
+  options: [
+    { value: "tteokbokki", name: "떡볶이" },
+    { value: "odeng", name: "오뎅" },
+    { value: "half_half", name: "반반" },
+    { value: "bunmoja", name: "분모자" },
+  ],
+};
 
-type ToppingType = keyof typeof TOPPING_OPTIONS; // "A" | "B"
+const createMenu = ({ config, description, ...menu }: MenuSeed): MenuSummary & {
+  config: MenuConfig;
+  explan?: string;
+} => ({
+  ...menu,
 
-const CATEGORY_TO_TOPPING_TYPE: Record<string, readonly ToppingType[]> = {
-  엽기: ["A", "B"],
-  엽기닭볶음탕: ["A", "B"],
-  로제: ["B"],
-  마라: ["A", "B"],
-  마라로제: ["A", "B"],
-  닭발: ["A", "B"]
-} as const;
+  section: config.section,
+  sectionLabel: SECTION_LABELS[config.section],
+  description,
+  explan: description,
+  config,
+});
 
+const toMenuSummary = (item: ReturnType<typeof createMenu>) => {
+  const { config, ...menu } = item;
+  void config;
+  return menu;
+};
 
-// ✅ 메뉴 상세 (id로 찾기)
+const menuSeeds: MenuSeed[] = [
+  {
+    id: "yupddeok",
+    name: "엽기메뉴",
+    price: 14000,
+    image: "/yupddeok.png",
+    config: { section: "MAIN", spiceType: "A", toppingTypes: ["A", "B"] },
+  },
+  
+  {
+    id: "rose",
+    name: "로제메뉴",
+    price: 16000,
+    image: "/rose.png",
+    config: { section: "MAIN", spiceType: "B", toppingTypes: ["B"] },
+  },
+  
+  {
+    id: "mara",
+    name: "마라떡볶이",
+    price: 16000,
+    image: "/mara.png",
+    description: "떡볶이만 선택 가능, 향신료(산초, 잠두 등) 포함",
+    config: { section: "MAIN", spiceType: "B", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "mararose",
+    name: "마라로제떡볶이",
+    price: 18000,
+    image: "/mararose.png",
+    description: "떡볶이만 선택 가능, 향신료(산초, 잠두 등) 포함",
+    config: { section: "MAIN", spiceType: "B", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "yupdak",
+    name: "엽기닭볶음탕",
+    price: 24000,
+    image: "/yupdak.png",
+    config: { section: "MAIN", spiceType: "A", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "set-001",
+    name: "실속세트",
+    price: 17500,
+    image: "/set-001.png",
+    description: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1)",
+    config: { section: "SET" },
+  },
+  {
+    id: "set-002",
+    name: "베스트세트",
+    price: 20000,
+    image: "/set-002.png",
+    description: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1) + 중국당면",
+    config: { section: "SET" },
+  },
+  {
+    id: "set-003",
+    name: "스페셜세트",
+    price: 25000,
+    image: "/set-003.png",
+    description: "떡볶이 + 주먹김밥 + 모둠튀김 (만두2, 김말이1, 야채튀김1) + 중국당면 + 엽봉(5개)",
+    config: { section: "SET" },
+  },
+  {
+    id: "set-004",
+    name: "숯불닭발세트",
+    price: 18500,
+    image: "/set-004.png",
+    description: "숯불닭발메뉴 (무뼈닭발/ 통뼈닭발 중 택1) + 주먹김밥 + 계란찜",
+    config: { section: "SET" },
+  },
+  {
+    id: "set-005",
+    name: "국물닭발세트",
+    price: 19500,
+    image: "/set-005.png",
+    description: "국물닭발메뉴 (무뼈닭발/ 통뼈닭발 중 택1) + 주먹김밥 + 계란찜",
+    config: { section: "SET" },
+  },
+  {
+    id: "dak-001",
+    name: "숯불통뼈닭발",
+    price: 15000,
+    image: "/dak-001.png",
+    config: { section: "DAKBAL", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "dak-002",
+    name: "숯불무뼈닭발",
+    price: 16000,
+    image: "/dak-002.png",
+    config: { section: "DAKBAL", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "dak-003",
+    name: "국물통뼈닭발",
+    price: 16000,
+    image: "/dak-003.png",
+    config: { section: "DAKBAL", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "dak-004",
+    name: "국물무뼈닭발",
+    price: 17000,
+    image: "/dak-004.png",
+    config: { section: "DAKBAL", toppingTypes: ["A", "B"] },
+  },
+  {
+    id: "kit-001",
+    name: "엽기밀키트",
+    price: 18000,
+    image: "/kit-001.png",
+    description: "2개부터 주문 가능합니다. 음료, 단무지, 수저세트 미제공",
+    config: { section: "MEALKIT" },
+  },
+  {
+    id: "kit-002",
+    name: "로제밀키트",
+    price: 18000,
+    image: "/kit-002.png",
+    description: "2개부터 주문 가능합니다. 음료, 단무지, 수저세트 미제공",
+    config: { section: "MEALKIT" },
+  },
+  {
+    id: "side-001",
+    name: "참치마요밥",
+    price: 3500,
+    image: "/side-001.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-002",
+    name: "주먹김밥 (셀프)",
+    price: 2000,
+    image: "/side-002.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-003",
+    name: "계란찜",
+    price: 2000,
+    image: "/side-003.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-004",
+    name: "계란야채죽",
+    price: 5000,
+    image: "/side-004.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-005",
+    name: "순대",
+    price: 3000,
+    image: "/side-005.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-006",
+    name: "오뎅튀김 (15개)",
+    price: 2000,
+    image: "/side-006.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-007",
+    name: "모둠튀김",
+    price: 2000,
+    image: "/side-007.png",
+    description: "만두(2개) + 김말이(1개) + 야채튀김(1개)",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-008",
+    name: "만두 (4개)",
+    price: 2000,
+    image: "/side-008.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-009",
+    name: "김말이 (3개)",
+    price: 4500,
+    image: "/side-009.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-010",
+    name: "야채튀김 (1개)",
+    price: 1000,
+    image: "/side-010.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-011",
+    name: "꿔바로우 (5개)",
+    price: 5900,
+    image: "/side-011.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-012",
+    name: "엽봉 (5개)",
+    price: 5000,
+    image: "/side-012.png",
+    description: "마늘간장 후라이드 봉",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-013",
+    name: "바삭치즈만두 (7개)",
+    price: 2000,
+    image: "/side-013.png",
+    description: "치즈 4종 (모짜렐라, 고다, 체다, 크림)으로 만든 만두",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-014",
+    name: "엽도그 (1개)",
+    price: 2000,
+    image: "/side-014.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-015",
+    name: "감자채튀김",
+    price: 2500,
+    image: "/side-015.png",
+    description: "엽기시즈닝(버터갈릭맛) 1개 포함",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-016",
+    name: "엽기시즈닝 (버터갈릭맛)",
+    price: 300,
+    image: "/side-016.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-017",
+    name: "엽기핫불소스",
+    price: 700,
+    image: "/side-017.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-018",
+    name: "공깃밥",
+    price: 1000,
+    image: "/side-018.png",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "side-019",
+    name: "단무지 (1개)",
+    price: 500,
+    image: "/side-019.jpeg",
+    config: { section: "SIDE" },
+  },
+  {
+    id: "drink-001",
+    name: "음료 (유산균)",
+    price: 1000,
+    image: "/drink-001.png",
+    config: { section: "DRINK" },
+  },
+];
+
+const menus = menuSeeds.map(createMenu);
+
+const menuSummaryList = menus.map(toMenuSummary);
+
+const menuDetailMap = new Map(
+  menus.map(({ config, ...menu }) => [
+    menu.id,
+    {
+      ...menu,
+      menuOption: menu.id === "yupddeok" ? YUPDDEOK_MENU_OPTIONS : undefined,
+      spice: config.spiceType ? SPICE_OPTIONS[config.spiceType] : undefined,
+      toppingChoices: (config.toppingTypes ?? []).map((type) => ({
+        type,
+        ...TOPPING_OPTIONS[type],
+      })),
+    },
+  ]),
+);
+
 export const handlers = [
-   http.get("/api/menus", () => {
-    return HttpResponse.json(menus);
+  http.get("/api/menus", async () => {
+    await delay(150);
+    return HttpResponse.json(menuSummaryList);
   }),
+
   http.get("/api/menus/:id", async ({ params }) => {
     await delay(200);
     const id = params.id as string;
+    const menu = menuDetailMap.get(id);
 
-    const menu = menus.find((m) => m.id === id);
-    
-    // 없으면 404
     if (!menu) {
       return HttpResponse.json(
         { code: "NOT_FOUND", message: "메뉴가 없습니다" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-
-    const spiceType = CATEGORY_TO_SPICE_TYPE[menu.category] ; // 기본값
-    const spice = SPICE_OPTIONS[spiceType];
-
-    const allowed: ToppingType[] =
-    (menu as any).spiceTypesAllowed ??
-    (CATEGORY_TO_TOPPING_TYPE[menu.category] ?? ["X"]);
-
-  const toppingChoices = allowed.map((t) => ({
-    type: t,
-    ...TOPPING_OPTIONS[t],
-  }));
-    
-    return HttpResponse.json({...menu,spice,toppingChoices});
+    return HttpResponse.json(menu);
   }),
-
-  
 ];

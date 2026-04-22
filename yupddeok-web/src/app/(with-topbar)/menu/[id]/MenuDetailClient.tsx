@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import SpiceSelector from "./SpiceSelector";
 import ToppingSelector from "./ToppingSelector";
-import Link from "next/link";
 import { CART_KEY } from "@/constants/storageKeys";
-import type { CartState, CartItem } from "@/types/cart";
+import type { CartState } from "@/types/cart";
 
-type SpiceOption = { value: string; label: string };
+type MenuOption = { value: string; name: string };
+type MenuOptionConfig = { required: boolean; options: MenuOption[] };
+type SpiceOption = { value: string; name: string };
 type ToppingOption = {
   type: "A" | "B";
   required: boolean;
@@ -21,7 +23,9 @@ type Menu = {
   id: string;
   name: string;
   price: number;
+  image: string;
   explan?: string;
+  menuOption?: MenuOptionConfig;
   spice?: SpiceConfig;
   toppingChoices: ToppingOption[];
 };
@@ -66,9 +70,11 @@ export default function MenuDetailClient({ id }: { id: string }) {
 
   function makeCartKey(params: {
   menuId: string;
+  menuOptionValue?: string | null;
   spiceValue?: string | null;
   toppings: SelectedTopping[];
 }) {
+  const menuOption = params.menuOptionValue ?? "none";
   const spice = params.spiceValue ?? "none";
 
   const toppingsKey = params.toppings
@@ -76,7 +82,7 @@ export default function MenuDetailClient({ id }: { id: string }) {
     .sort() // ⭐ 순서 무시
     .join(",");
 
-  return `${params.menuId}|spice:${spice}|toppings:${toppingsKey}`;
+  return `${params.menuId}|menuOption:${menuOption}|spice:${spice}|toppings:${toppingsKey}`;
 }
 
   useEffect(() => {
@@ -96,12 +102,14 @@ const selectedToppings = [
 ];
 
 
+  const [selectedMenuOption, setSelectedMenuOption] = useState<MenuOption | null>(null);
   const [selectedSpice, setSelectedSpice] = useState<{ value: string; name: string } | null>(null);
 
   if (isLoading) return <p>로딩중...</p>;
   if (isError || !data) return <p>없는 메뉴입니다.</p>;
 
   const spice = data.spice;
+  const menuOption = data.menuOption;
   const topping = data.toppingChoices ?? [];
 
 const toppingsTotal = () => {
@@ -109,14 +117,23 @@ const toppingsTotal = () => {
       return price
 };
 
+  const selectedToppingsPrice = toppingsTotal();
+  const totalPrice = (data.price + selectedToppingsPrice) * menuCount;
+
   const addToCart = () => {
   const toppingsPrice = toppingsTotal();
 
   const key = makeCartKey({
     menuId: data.id,
+    menuOptionValue: selectedMenuOption?.value ?? null,
     spiceValue: selectedSpice?.value ?? null,
     toppings: selectedToppings,
   });
+
+  if (menuOption?.required && !selectedMenuOption) {
+    window.alert("메뉴 구성을 선택해주세요.");
+    return;
+  }
 
   setCartState((prev) => {
     const items = Array.isArray(prev.items) ? prev.items : [];
@@ -151,7 +168,9 @@ const toppingsTotal = () => {
     const newItem: any = {
       id: data.id,
       name: data.name,
+      image: data.image,
       price: data.price,
+      selectedMenuOption: selectedMenuOption ?? undefined,
       selectedSpice: selectedSpice ?? undefined,
       selectedToppings,
       toppingsPrice,
@@ -175,15 +194,41 @@ const toppingsTotal = () => {
 
 
   return (
-    <div>
+    <div className="px-6 pb-36">
+      <div className="-mx-6 flex justify-center">
+        <Image
+          src={data.image}
+          alt={data.name}
+          width={260}
+          height={260}
+          className="rounded-2xl object-contain"
+        />
+      </div>
 
-      <h1>{data.name}</h1>
-      <h2>{data.price.toLocaleString()}원</h2>
+      <h1 className="text-[20px] font-bold">{data.name}</h1>
+      <h2 className="text-[22px] font-bold">{data.price.toLocaleString()}원</h2>
+      {menuOption ? (
+        <section className="mt-4">
+          <h3 className="font-bold">메뉴 선택 {menuOption.required && "(필수)"}</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {menuOption.options.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setSelectedMenuOption(opt)}
+                className={
+                  selectedMenuOption?.value === opt.value
+                    ? "rounded-full border border-black bg-black px-4 py-2 font-bold text-white"
+                    : "rounded-full border border-gray-300 bg-white px-4 py-2 font-bold text-black"
+                }
+              >
+                {opt.name}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
       <p>{data.explan}</p>
-
-         <button type="button" onClick={() => setMenuCount(c => Math.max(1, c - 1))}>-</button>
-          <span>{menuCount}</span>
-          <button type="button" onClick={() => setMenuCount(c => c + 1)}>+</button>
 
     
 
@@ -211,9 +256,44 @@ const toppingsTotal = () => {
           ))
         : null}
 
-      <button style={{ marginTop: 16 }} onClick={addToCart}>
-        장바구니 담기
-      </button>
+      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[375px] -translate-x-1/2 border-t border-gray-200 bg-white px-6 pb-6 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-sm text-gray-500">가격</p>
+            <p className="text-[22px] font-bold">{totalPrice.toLocaleString()}원</p>
+          </div>
+
+            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-full border border-gray-300 px-3 py-2">
+              <button
+                type="button"
+                className="text-lg font-bold"
+                onClick={() => setMenuCount((c) => Math.max(1, c - 1))}
+              >
+                -
+              </button>
+              <span className="min-w-6 text-center font-bold">{menuCount}</span>
+              <button
+                type="button"
+                className="text-lg font-bold"
+                onClick={() => setMenuCount((c) => c + 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+          <button
+            type="button"
+            className="w-full rounded-full bg-black px-5 py-3 font-bold text-white"
+            onClick={addToCart}
+          >
+            장바구니 담기
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

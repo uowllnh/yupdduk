@@ -1,101 +1,378 @@
 "use client";
-import Link from "next/link";
-import { STORE_KEY } from "@/constants/storageKeys";
-import { CART_KEY } from "@/constants/storageKeys";
-import { useEffect, useState } from "react";
 
-type Menu = {
-  id: string;
-  name: string;
-};
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CART_KEY, ORDER_KEY, STORE_KEY } from "@/constants/storageKeys";
+import type { CartState } from "@/types/cart";
+import type { OrderRecord } from "@/types/order";
+
+const deliveryRequests = [
+  "문 앞에 두고 노크해주세요",
+  "문 앞에 두면 가져갈게요 (벨X, 노크X)",
+  "직접 받을게요",
+  "전화주시면 마중 나갈게요",
+  "직접 입력",
+];
+
+const paymentMethods = [
+  "1초 결제",
+  "신용/체크카드",
+  "카카오페이",
+  "네이버페이",
+  "페이코",
+  "삼성페이",
+  "만나서 결제",
+];
 
 export default function Pay() {
-  const [menus, setMenus] = useState<Menu[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeName, setStoreName] = useState<string>("");
+  const router = useRouter();
+  const emptyCartState: CartState = {
+    items: [],
+    delivery: { type: "DELIVERY" },
+    requestNote: "",
+    price: {
+      itemsTotal: 0,
+      deliveryFee: 3000,
+      discount: 0,
+      finalTotal: 0,
+    },
+  };
+
+  const [cartState] = useState<CartState>(() => {
+    if (typeof window === "undefined") return emptyCartState;
+    try {
+      const saved = localStorage.getItem(CART_KEY);
+      return saved ? (JSON.parse(saved) as CartState) : emptyCartState;
+    } catch {
+      return emptyCartState;
+    }
+  });
+  const [storeName, setStoreName] = useState("");
+  const [ownerRequest, setOwnerRequest] = useState("");
+  const [saveOwnerRequest, setSaveOwnerRequest] = useState(false);
+  const [skipCutlery, setSkipCutlery] = useState(false);
+  const [deliveryRequest, setDeliveryRequest] = useState("");
+  const [safePhone, setSafePhone] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState(paymentMethods[0]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/menus");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setMenus(data);
-        const saved = localStorage.getItem(STORE_KEY);
-        if (saved) setStoreName(saved);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
+    try {
+      const savedStore = localStorage.getItem(STORE_KEY);
+      if (savedStore) setStoreName(savedStore);
+    } catch {}
   }, []);
 
+  const priceSummary = useMemo(() => {
+    const itemsTotal = cartState.price.itemsTotal;
+    const deliveryFee = cartState.items.length > 0 ? 3000 : 0;
+    const discount = 0;
+    const finalTotal = itemsTotal + deliveryFee - discount;
+
+    return {
+      itemsTotal,
+      deliveryFee,
+      discount,
+      finalTotal,
+    };
+  }, [cartState.items.length, cartState.price.itemsTotal]);
+
+  const handlePlaceOrder = () => {
+    if (cartState.items.length === 0) return;
+
+    const nextOrder: OrderRecord = {
+      id: `order_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      storeName: storeName ? `엽기떡볶이 ${storeName}` : "엽기떡볶이",
+      channel: cartState.delivery.type,
+      paymentMethod,
+      requestNote: ownerRequest,
+      deliveryRequest,
+      safePhone,
+      skipCutlery,
+      items: cartState.items,
+      price: priceSummary,
+    };
+
+    try {
+      const saved = localStorage.getItem(ORDER_KEY);
+      const prevOrders = saved ? (JSON.parse(saved) as OrderRecord[]) : [];
+      localStorage.setItem(ORDER_KEY, JSON.stringify([nextOrder, ...prevOrders]));
+      localStorage.setItem(
+        CART_KEY,
+        JSON.stringify({
+          ...cartState,
+          items: [],
+          price: {
+            itemsTotal: 0,
+            deliveryFee: 0,
+            discount: 0,
+            finalTotal: 0,
+          },
+        } satisfies CartState),
+      );
+      router.push("/pay/orderCompleted");
+    } catch {}
+  };
+
   return (
-    <section>
-      <section>
-        <p>매장정보</p>
-        <p>엽기떡볶이 {storeName ? storeName : "아직 선택 안 함"}</p>
-        <p>배달주소</p>
-        <p>서울특별시 강남구 삼성로 123</p>
-        <p>휴대폰번호</p>
-        <p>010-1234-5678</p>
-        <input type="checkbox" /> 안심번호 사용
-      </section>
+    <div className="bg-[#f6f7f9] px-4 pb-44 pt-2">
+      <div className="space-y-3">
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[12px] font-semibold tracking-[0.08em] text-gray-400">
+                STORE
+              </p>
+              <h1 className="mt-2 text-[24px] font-bold text-black">
+                {storeName ? `엽기떡볶이 ${storeName}` : "엽기떡볶이"}
+              </h1>
+            </div>
+            <div className="rounded-full bg-red-50 px-3 py-1 text-[12px] font-bold text-red-500">
+              배달 주문
+            </div>
+          </div>
 
-      <section>
-        <p>주문시 요청사항</p>
-        <div>
-          <p>가게 사장님께</p>
-          <input type="checkbox" /> 다음에도 사용
-          <input type="text" placeholder="60자 이내로 작성해주세요." />
-          <input type="checkbox" /> 수저, 포크 안 받기
+          <div className="mt-4 rounded-2xl bg-gray-50 p-4">
+            <p className="text-sm font-semibold text-gray-400">배달 주소</p>
+            <p className="mt-1 font-bold text-black">
+              {cartState.delivery.address ?? "서울특별시 강남구 삼성로 123"}
+            </p>
+            <p className="mt-4 text-sm font-semibold text-gray-400">연락처</p>
+            <p className="mt-1 font-bold text-black">010-1234-5678</p>
+            <label className="mt-4 flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={safePhone}
+                onChange={(event) => setSafePhone(event.target.checked)}
+              />
+              안심번호 사용
+            </label>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[20px] font-bold">주문내역</h2>
+            <span className="text-sm font-semibold text-gray-400">
+              총 {cartState.items.length}개
+            </span>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {cartState.items.length === 0 ? (
+              <p className="rounded-2xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+                담긴 메뉴가 없습니다.
+              </p>
+            ) : (
+              cartState.items.map((item, index) => {
+                const optionSummary = [
+                  item.selectedMenuOption
+                    ? `메뉴 ${item.selectedMenuOption.name}`
+                    : null,
+                  item.selectedSpice ? `맵기 ${item.selectedSpice.name}` : null,
+                  item.selectedToppings.length > 0
+                    ? `토핑 ${item.selectedToppings
+                        .map((topping) => `${topping.name} x${topping.count}`)
+                        .join(", ")}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" / ");
+
+                return (
+                  <div
+                    key={item.key ?? `${item.id}-${index}`}
+                    className="rounded-2xl bg-gray-50 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-black">{item.name}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {optionSummary || "기본 옵션"}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="font-bold text-black">x{item.count}</p>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {(item.price + item.toppingsPrice).toLocaleString()}원
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <h2 className="text-[20px] font-bold">요청사항</h2>
+
+          <div className="mt-4 rounded-2xl bg-gray-50 p-4">
+            <p className="font-bold text-black">가게 사장님께</p>
+            <textarea
+              value={ownerRequest}
+              maxLength={60}
+              onChange={(event) => setOwnerRequest(event.target.value)}
+              placeholder="예) 덜 맵게 부탁드려요. 60자 이내"
+              className="mt-3 h-24 w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none"
+            />
+            <div className="mt-3 flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={saveOwnerRequest}
+                  onChange={(event) => setSaveOwnerRequest(event.target.checked)}
+                />
+                다음에도 사용
+              </label>
+              <span className="text-gray-400">{ownerRequest.length}/60</span>
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={skipCutlery}
+                onChange={(event) => setSkipCutlery(event.target.checked)}
+              />
+              수저, 포크 안 받기
+            </label>
+          </div>
+
+          <div className="mt-3 rounded-2xl bg-gray-50 p-4">
+            <p className="font-bold text-black">배달 기사님께</p>
+            <div className="relative mt-3">
+              <select
+                value={deliveryRequest}
+                onChange={(event) => setDeliveryRequest(event.target.value)}
+                className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 pr-10 text-sm font-medium outline-none"
+              >
+                <option value="">선택해주세요</option>
+                {deliveryRequests.map((request) => (
+                  <option key={request} value={request}>
+                    {request}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-red-500">
+                <svg
+                  width="12"
+                  height="8"
+                  viewBox="0 0 12 8"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M1 1.5L6 6.5L11 1.5"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <h2 className="text-[20px] font-bold">쿠폰 및 할인</h2>
+
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 px-4 py-4">
+              <div>
+                <p className="font-bold text-black">보유 쿠폰</p>
+                <p className="mt-1 text-sm text-gray-500">사용 가능한 쿠폰 없음</p>
+              </div>
+              <span className="text-sm font-semibold text-gray-300">0장</span>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl bg-gray-50 px-4 py-4">
+              <div>
+                <p className="font-bold text-black">모바일 상품권</p>
+                <p className="mt-1 text-sm text-gray-500">등록된 상품권 없음</p>
+              </div>
+              <span className="text-sm font-semibold text-gray-300">등록</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <h2 className="text-[20px] font-bold">결제수단</h2>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {paymentMethods.map((method) => {
+              const isSelected = paymentMethod === method;
+
+              return (
+                <button
+                  key={method}
+                  type="button"
+                  onClick={() => setPaymentMethod(method)}
+                  className={
+                    isSelected
+                      ? "rounded-2xl border border-black bg-black px-4 py-4 text-left font-bold text-white"
+                      : "rounded-2xl border border-gray-200 bg-white px-4 py-4 text-left font-bold text-black"
+                  }
+                >
+                  {method}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] bg-white p-5 shadow-sm">
+          <h2 className="text-[20px] font-bold">결제금액</h2>
+
+          <div className="mt-4 space-y-3 text-sm">
+            <div className="flex items-center justify-between text-gray-600">
+              <span>주문금액</span>
+              <span>{priceSummary.itemsTotal.toLocaleString()}원</span>
+            </div>
+            <div className="flex items-center justify-between text-gray-600">
+              <span>배달팁</span>
+              <span>{priceSummary.deliveryFee.toLocaleString()}원</span>
+            </div>
+            <div className="flex items-center justify-between text-gray-600">
+              <span>할인금액</span>
+              <span>-{priceSummary.discount.toLocaleString()}원</span>
+            </div>
+            <div className="border-t border-dashed border-gray-200 pt-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-black">최종 결제금액</span>
+                <span className="text-[22px] font-bold text-black">
+                  {priceSummary.finalTotal.toLocaleString()}원
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[375px] -translate-x-1/2 border-t border-gray-200 bg-white px-6 pb-6 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-sm text-gray-500">최종 결제금액</p>
+              <p className="mt-1 text-[28px] font-bold">
+                {priceSummary.finalTotal.toLocaleString()}원
+              </p>
+            </div>
+            <div className="rounded-full bg-red-50 px-3 py-1 text-[12px] font-bold text-red-500">
+              {paymentMethod}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePlaceOrder}
+            className="flex w-full items-center justify-center rounded-full bg-black px-5 py-4 text-center font-bold text-white"
+          >
+            {priceSummary.finalTotal.toLocaleString()}원 결제하기
+          </button>
         </div>
-        <div>
-          <p>배달 기사님께</p>
-          <select>
-            <option value="">선택하세요</option>
-            <option value="ask1">문 앞에 두고 노크해주세요</option>
-            <option value="ask2">문 앞에 두면 가져갈게요 (벨X, 노크X)</option>
-            <option value="ask3">직접 받을게요</option>
-            <option value="ask4">전화주시면 마중 나갈게요</option>
-            <option value="ask5">직접 입력</option>
-          </select>
-        </div>
-      </section>
-
-      <section>
-        <p>쿠폰 및 할인</p>
-        <p>보유쿠폰</p>
-        <p>모바일 상품권</p>
-      </section>
-
-      <section>
-        <p>결제수단</p>
-        <label>
-          <input type="radio" /> 1초 결제{" "}
-        </label>
-        <label>
-          <input type="radio" /> 신용/체크카드{" "}
-        </label>
-        <label>
-          <input type="radio" /> 카카오페이{" "}
-        </label>
-        <label>
-          <input type="radio" /> 네이버페이{" "}
-        </label>
-        <label>
-          <input type="radio" /> 페이코{" "}
-        </label>
-        <label>
-          <input type="radio" /> 삼성페이{" "}
-        </label>
-        <label>
-          <input type="radio" /> 만나서 결제{" "}
-        </label>
-      </section>
-
-      <Link href={`pay/orderCompleted`}> 주문하기 </Link>
-    </section>
+      </div>
+    </div>
   );
 }

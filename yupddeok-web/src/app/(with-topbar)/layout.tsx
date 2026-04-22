@@ -1,9 +1,15 @@
 import Back from "./backbutton";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <section>
-      <Back />
+      <div className="m-5 mt-5">
+        <Back />
+      </div>
       {children}
     </section>
   );
