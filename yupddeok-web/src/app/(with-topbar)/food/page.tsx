@@ -1,146 +1,80 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { STORE_KEY } from "@/constants/storageKeys";
+import { readStorage } from "@/lib/storage";
+import type { MenuSection } from "@/types/menu";
+import { getMenus } from "./_api";
+import { MenuCategoryTabs } from "./_components/MenuCategoryTabs";
+import { MenuGrid } from "./_components/MenuGrid";
+import { MenuListState } from "./_components/MenuListState";
+import { MenuSkeleton } from "./_components/MenuSkeleton";
+import { StoreSummary } from "./_components/StoreSummary";
 
-type MenuSection = "MAIN" | "SET" | "MEALKIT" | "SIDE" | "DRINK";
-
-type Menu = {
-  id: string;
-  name: string;
-  section: MenuSection;
-  image: string;
-  price: number;
-};
-
-export default function Home() {
-  const [menus, setMenus] = useState<Menu[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [storeName, setStoreName] = useState<string>("");
+export default function FoodPage() {
   const [selectedSection, setSelectedSection] = useState<MenuSection | "">("");
+  const [storeName] = useState(() => readStorage(STORE_KEY, ""));
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/menus");
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setMenus(data);
-        const saved = localStorage.getItem(STORE_KEY);
-        if (saved) setStoreName(saved);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+  const {
+    data: menus = [],
+    isError,
+    isLoading,
+  } = useQuery({
+    queryKey: ["menus"],
+    queryFn: getMenus,
+  });
 
-  const filteredMenus = selectedSection
-    ? menus.filter((menu) => menu.section === selectedSection)
-    : menus;
-
-  const isEmpty = !loading && filteredMenus.length === 0;
+  const filteredMenus = useMemo(() => {
+    if (!selectedSection) return menus;
+    return menus.filter((menu) => menu.section === selectedSection);
+  }, [menus, selectedSection]);
 
   return (
-    <section className="px-5 pb-6">
-      <div className="-mt-[64px] mb-5 flex items-center pl-[58px] pr-1">
-        <div className="relative w-[102px]">
-          <select
-            value={selectedSection}
-            onChange={(event) =>
-              setSelectedSection(event.target.value as MenuSection | "")
-            }
-            className="h-11 w-full appearance-none rounded-full border border-gray-200 bg-white pl-4 pr-11 text-[15px] font-semibold text-black shadow-sm outline-none"
-          >
-            <option value="">전체</option>
-            <option value="MAIN">MAIN</option>
-            <option value="SET">SET</option>
-            <option value="MEALKIT">MEALKIT</option>
-            <option value="SIDE">SIDE</option>
-            <option value="DRINK">DRINK</option>
-          </select>
-
-          <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-red-500">
-            <svg
-              width="12"
-              height="8"
-              viewBox="0 0 12 8"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1.5L6 6.5L11 1.5"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-        </div>
+    <section className="min-h-screen bg-[#f6f7f9] px-5 pb-8">
+      <div className="space-y-4">
+        <StoreSummary storeName={storeName} />
+        <MenuCategoryTabs
+          selectedSection={selectedSection}
+          onChange={setSelectedSection}
+        />
       </div>
 
-      <div className="rounded-3xl border border-gray-200 bg-gradient-to-br from-white to-gray-50 px-4 py-4 shadow-sm">
-        <p className="text-[12px] font-semibold tracking-[0.08em] text-gray-400">
-          SELECTED STORE
-        </p>
-        <div className="mt-2 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[18px] font-bold text-black">
-              {storeName ? storeName : "아직 선택 안 함"}
-            </p>
-            <p className="mt-1 text-sm text-gray-500">현재 주문할 매장</p>
-          </div>
-          <div className="rounded-full bg-red-50 px-3 py-1 text-[12px] font-bold text-red-500">
-            배달 가능
-          </div>
-        </div>
+      {isLoading ? <MenuSkeleton /> : null}
+
+      {isError ? (
+        <MenuListState
+          title="메뉴를 불러오지 못했습니다"
+          description="잠시 후 다시 시도해주세요."
+        />
+      ) : null}
+
+      {!isLoading && !isError && filteredMenus.length > 0 ? (
+        <MenuGrid menus={filteredMenus} />
+      ) : null}
+
+      {!isLoading && !isError && filteredMenus.length === 0 ? (
+        <MenuListState
+          title="표시할 메뉴가 없습니다"
+          description="다른 카테고리를 선택해보세요."
+        />
+      ) : null}
+
+      <div className="mt-6 grid grid-cols-2 gap-3">
+        <Link
+          href="/order"
+          className="rounded-2xl bg-black px-4 py-3 text-center font-bold text-white"
+        >
+          주문하기
+        </Link>
+        <Link
+          href="/cart"
+          className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-center font-bold text-black"
+        >
+          장바구니
+        </Link>
       </div>
-
-      {loading && <p className="font-bold">메뉴를 불러오는 중입니다.</p>}
-
-      {!loading && (
-        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-2">
-          {filteredMenus.map((menu) => (
-            <Link
-              key={menu.id}
-              href={`/menu/${menu.id}`}
-              className="my-1 rounded-[25px] border border-gray-200 px-3 py-3"
-            >
-              <div className="flex justify-center">
-                <Image
-                  src={menu.image}
-                  alt={menu.name}
-                  width={114}
-                  height={114}
-                />
-              </div>
-              <div className="mt-3 flex items-end justify-between">
-                <div className="flex flex-col text-[15px]">
-                  <div className="font-bold">{menu.name}</div>
-                  <div className="font-bold">{menu.price}원</div>
-                </div>
-                <Image
-                  src={"/plus_bt.png"}
-                  alt={"추가 버튼"}
-                  width={30}
-                  height={30}
-                />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {isEmpty && (
-        <p className="font-bold">선택한 카테고리에 해당하는 메뉴가 없습니다.</p>
-      )}
-
-      <Link href={`/order`}> 주문하기</Link>
-      <Link href={`/cart`}> 장바구니(임시버튼)</Link>
     </section>
   );
 }

@@ -1,20 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-
-type ToppingOption = { value: string; name: string; price: number };
-type SelectedTopping = {
-  value: string;
-  name: string;
-  price: number;
-  count: number;
-};
+import type { SelectedTopping, ToppingOption } from "@/types/menu";
 
 type Props = {
   type: "A" | "B";
   options: ToppingOption[];
   required: boolean;
   max: number;
-  onChange: (type: "A" | "B", select: SelectedTopping[]) => void; // ✅ 변경
+  onChange: (type: "A" | "B", select: SelectedTopping[]) => void;
 };
 
 export default function ToppingSelector({
@@ -41,8 +34,8 @@ export default function ToppingSelector({
   const toggle = (opt: ToppingOption, checked: boolean) => {
     setSelected((prev) => {
       if (checked) {
-        if (prev.length >= max) return prev; // ✅ 초과 방지
-        return [...prev, { ...opt, count: 1 }]; // ✅ count 넣기
+        if (prev.length >= max) return prev;
+        return [...prev, { ...opt, count: 1 }];
       }
       return prev.filter((t) => t.value !== opt.value);
     });

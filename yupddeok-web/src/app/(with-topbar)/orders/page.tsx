@@ -1,23 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ORDER_KEY } from "@/constants/storageKeys";
+import { createOptionSummary } from "@/lib/cart";
+import { readStorage } from "@/lib/storage";
 import type { OrderRecord } from "@/types/order";
 
 type OrderFilter = "DELIVERY" | "OTHER";
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderRecord[]>([]);
+  const [orders] = useState<OrderRecord[]>(() =>
+    readStorage<OrderRecord[]>(ORDER_KEY, []),
+  );
   const [selectedFilter, setSelectedFilter] = useState<OrderFilter>("DELIVERY");
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ORDER_KEY);
-      setOrders(saved ? (JSON.parse(saved) as OrderRecord[]) : []);
-    } catch {
-      setOrders([]);
-    }
-  }, []);
 
   const filteredOrders = useMemo(() => {
     if (selectedFilter === "DELIVERY") {
@@ -95,22 +90,6 @@ export default function OrdersPage() {
 
               <div className="mt-4 space-y-3 rounded-2xl bg-gray-50 p-4">
                 {order.items.map((item) => {
-                  const optionSummary = [
-                    item.selectedMenuOption
-                      ? `메뉴 ${item.selectedMenuOption.name}`
-                      : null,
-                    item.selectedSpice
-                      ? `맵기 ${item.selectedSpice.name}`
-                      : null,
-                    item.selectedToppings.length > 0
-                      ? `토핑 ${item.selectedToppings
-                          .map((topping) => `${topping.name} x${topping.count}`)
-                          .join(", ")}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" / ");
-
                   return (
                     <div
                       key={item.key ?? `${order.id}-${item.id}`}
@@ -119,7 +98,7 @@ export default function OrdersPage() {
                       <div className="min-w-0">
                         <p className="font-bold text-black">{item.name}</p>
                         <p className="mt-1 text-sm text-gray-500">
-                          {optionSummary || "기본 옵션"}
+                          {createOptionSummary(item) || "기본 옵션"}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">

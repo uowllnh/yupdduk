@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CART_KEY, ORDER_KEY, STORE_KEY } from "@/constants/storageKeys";
 import type { CartState } from "@/types/cart";
 import type { OrderRecord } from "@/types/order";
+import { createOptionSummary, emptyCartState } from "@/lib/cart";
+import { readStorage, writeStorage } from "@/lib/storage";
 
 const deliveryRequests = [
   "문 앞에 두고 노크해주세요",
@@ -26,41 +28,25 @@ const paymentMethods = [
 
 export default function Pay() {
   const router = useRouter();
-  const emptyCartState: CartState = {
-    items: [],
-    delivery: { type: "DELIVERY" },
-    requestNote: "",
-    price: {
-      itemsTotal: 0,
-      deliveryFee: 3000,
-      discount: 0,
-      finalTotal: 0,
-    },
-  };
 
   const [cartState] = useState<CartState>(() => {
-    if (typeof window === "undefined") return emptyCartState;
-    try {
-      const saved = localStorage.getItem(CART_KEY);
-      return saved ? (JSON.parse(saved) as CartState) : emptyCartState;
-    } catch {
-      return emptyCartState;
-    }
+    const savedCart = readStorage(CART_KEY, emptyCartState);
+
+    return {
+      ...savedCart,
+      price: {
+        ...savedCart.price,
+        deliveryFee: 3000,
+      },
+    };
   });
-  const [storeName, setStoreName] = useState("");
+  const [storeName] = useState(() => readStorage(STORE_KEY, ""));
   const [ownerRequest, setOwnerRequest] = useState("");
   const [saveOwnerRequest, setSaveOwnerRequest] = useState(false);
   const [skipCutlery, setSkipCutlery] = useState(false);
   const [deliveryRequest, setDeliveryRequest] = useState("");
   const [safePhone, setSafePhone] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState(paymentMethods[0]);
-
-  useEffect(() => {
-    try {
-      const savedStore = localStorage.getItem(STORE_KEY);
-      if (savedStore) setStoreName(savedStore);
-    } catch {}
-  }, []);
 
   const priceSummary = useMemo(() => {
     const itemsTotal = cartState.price.itemsTotal;
@@ -94,22 +80,12 @@ export default function Pay() {
     };
 
     try {
-      const saved = localStorage.getItem(ORDER_KEY);
-      const prevOrders = saved ? (JSON.parse(saved) as OrderRecord[]) : [];
-      localStorage.setItem(ORDER_KEY, JSON.stringify([nextOrder, ...prevOrders]));
-      localStorage.setItem(
-        CART_KEY,
-        JSON.stringify({
-          ...cartState,
-          items: [],
-          price: {
-            itemsTotal: 0,
-            deliveryFee: 0,
-            discount: 0,
-            finalTotal: 0,
-          },
-        } satisfies CartState),
-      );
+      const prevOrders = readStorage<OrderRecord[]>(ORDER_KEY, []);
+      writeStorage(ORDER_KEY, [nextOrder, ...prevOrders]);
+      writeStorage(CART_KEY, {
+        ...emptyCartState,
+        delivery: cartState.delivery,
+      } satisfies CartState);
       router.push("/pay/orderCompleted");
     } catch {}
   };
@@ -165,20 +141,6 @@ export default function Pay() {
               </p>
             ) : (
               cartState.items.map((item, index) => {
-                const optionSummary = [
-                  item.selectedMenuOption
-                    ? `메뉴 ${item.selectedMenuOption.name}`
-                    : null,
-                  item.selectedSpice ? `맵기 ${item.selectedSpice.name}` : null,
-                  item.selectedToppings.length > 0
-                    ? `토핑 ${item.selectedToppings
-                        .map((topping) => `${topping.name} x${topping.count}`)
-                        .join(", ")}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" / ");
-
                 return (
                   <div
                     key={item.key ?? `${item.id}-${index}`}
@@ -188,7 +150,7 @@ export default function Pay() {
                       <div className="min-w-0">
                         <p className="font-bold text-black">{item.name}</p>
                         <p className="mt-1 text-sm text-gray-500">
-                          {optionSummary || "기본 옵션"}
+                          {createOptionSummary(item) || "기본 옵션"}
                         </p>
                       </div>
                       <div className="shrink-0 text-right">

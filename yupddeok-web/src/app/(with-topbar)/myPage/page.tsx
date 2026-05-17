@@ -1,14 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ADDRESS_KEY } from "@/constants/storageKeys";
-
-type Address = {
-  id: string;
-  add: string;
-  detailAdd?: string;
-};
+import { useState } from "react";
+import { getLatestAddressLabel, readSavedAddresses } from "@/lib/address";
 
 const quickLinks = [
   { href: "/orders", label: "주문내역", caption: "최근 주문 확인" },
@@ -21,25 +15,8 @@ const serviceLinks = [
 ];
 
 export default function MyPage() {
-  const [addressCount, setAddressCount] = useState(0);
-  const [latestAddress, setLatestAddress] = useState("");
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(ADDRESS_KEY);
-      if (!saved) return;
-
-      const parsed = JSON.parse(saved) as Address[];
-      setAddressCount(parsed.length);
-
-      const recent = parsed.at(-1);
-      if (!recent) return;
-
-      setLatestAddress(
-        [recent.add, recent.detailAdd].filter(Boolean).join(" "),
-      );
-    } catch {}
-  }, []);
+  const [addressCount] = useState(() => readSavedAddresses().length);
+  const [latestAddress] = useState(() => getLatestAddressLabel());
 
   return (
     <div className="bg-[#f6f7f9] px-4 py-4">

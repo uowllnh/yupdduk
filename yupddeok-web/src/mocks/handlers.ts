@@ -1,48 +1,19 @@
 import { delay, http, HttpResponse } from "msw";
+import type {
+  MenuDetail,
+  MenuOptionConfig,
+  MenuSection,
+  MenuSummary,
+  SpiceConfig,
+  ToppingOption,
+} from "@/types/menu";
 
-type MenuSection = "MAIN" | "SET" | "DAKBAL"| "SIDE" | "DRINK" | "MEALKIT";
 type SpiceType = "A" | "B";
 type ToppingType = "A" | "B";
 
-type MenuSummary = {
-  id: string;
-  name: string;
-  section: MenuSection;
-  sectionLabel: string;
-  price: number;
-  image: string;
-  description?: string;
-};
-
-type SpiceOption = {
-  value: string;
-  name: string;
-};
-
-type ToppingOption = {
-  value: string;
-  name: string;
-  price: number;
-};
-
-type SpiceConfig = {
-  required: boolean;
-  options: readonly SpiceOption[];
-};
-
-type MenuOption = {
-  value: string;
-  name: string;
-};
-
-type MenuOptionConfig = {
-  required: boolean;
-  options: readonly MenuOption[];
-};
-
 type ToppingConfig = {
   required: boolean;
-  options: readonly ToppingOption[];
+  options: ToppingOption[];
 };
 
 type MenuConfig = {
@@ -425,7 +396,7 @@ const menus = menuSeeds.map(createMenu);
 
 const menuSummaryList = menus.map(toMenuSummary);
 
-const menuDetailMap = new Map(
+const menuDetailMap = new Map<string, MenuDetail>(
   menus.map(({ config, ...menu }) => [
     menu.id,
     {

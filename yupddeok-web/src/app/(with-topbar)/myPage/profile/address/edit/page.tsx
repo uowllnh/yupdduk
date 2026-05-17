@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ADDRESS_KEY } from "@/constants/storageKeys";
 
 type Address = {
@@ -93,7 +93,8 @@ export default function Address() {
       />
       <div>
         <button
-          onClick={(e) =>
+          type="button"
+          onClick={() =>
             setaddress({
               ...address,
               id: "우리집",
@@ -103,7 +104,8 @@ export default function Address() {
           우리집
         </button>
         <button
-          onClick={(e) =>
+          type="button"
+          onClick={() =>
             setaddress({
               ...address,
               id: "직장",
@@ -113,7 +115,8 @@ export default function Address() {
           직장
         </button>
         <button
-          onClick={(e) =>
+          type="button"
+          onClick={() =>
             setaddress({
               ...address,
               id: "기타",

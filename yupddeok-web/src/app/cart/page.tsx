@@ -1,109 +1,62 @@
-// app/cart/cartlist/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { CART_KEY } from "@/constants/storageKeys";
-import type { CartState, CartItem } from "@/types/cart";
+import { clearCart, createOptionSummary, emptyCartState } from "@/lib/cart";
+import { readStorage, writeStorage } from "@/lib/storage";
+import type { CartState } from "@/types/cart";
 
+export default function CartPage() {
+  const [cartState, setCartState] = useState<CartState>(() =>
+    readStorage(CART_KEY, emptyCartState),
+  );
 
-export default function CartListPage() {
-  const emptyCartState: CartState = {
-  items: [],
-  delivery: { type: "DELIVERY" },
-  requestNote: "",
-  price: {
-    itemsTotal: 0,
-    deliveryFee: 0,
-    discount: 0,
-    finalTotal: 0,
-  },
-};
-
-
-  const [cartState, setCartState] = useState<CartState>(() => {
-  if (typeof window === "undefined") return emptyCartState; // SSR 안전장치
-  try {
-    const saved = localStorage.getItem(CART_KEY);
-    return saved ? (JSON.parse(saved) as CartState) : emptyCartState;
-  } catch {
-    return emptyCartState;
-  }
-});
-
- useEffect(() => {
-    try {
-      localStorage.setItem(CART_KEY, JSON.stringify(cartState));
-    } catch {}
+  useEffect(() => {
+    writeStorage(CART_KEY, cartState);
   }, [cartState]);
 
-
-
   return (
-    
-  <div>
+    <div className="px-6 py-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-[24px] font-bold">임시 장바구니</h1>
+        <button
+          type="button"
+          className="text-sm font-semibold text-red-400"
+          onClick={() => setCartState((prev) => clearCart(prev))}
+        >
+          장바구니 비우기
+        </button>
+      </div>
 
-    <Link href="/">홈으로 가기</Link>
-    
-    
+      {cartState.items.length === 0 ? (
+        <p className="mt-8 text-sm text-gray-500">비어있음</p>
+      ) : (
+        <ul className="mt-6 space-y-3">
+          {cartState.items.map((item, index) => (
+            <li
+              key={item.key ?? `${item.id}-${index}`}
+              className="rounded-2xl border border-gray-200 p-4"
+            >
+              <p className="font-bold">
+                {item.name} - {item.price.toLocaleString()}원
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {createOptionSummary(item) || "기본 옵션"} / 수량 {item.count}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
 
-<h3>🛒 장바구니 </h3>
-
-<button
-  type="button"
-  onClick={() =>
-    setCartState(prev => ({
-      ...prev,
-      items: [],
-      price: {
-        itemsTotal: 0,
-        deliveryFee: prev.price.deliveryFee,
-        discount: prev.price.discount,
-        finalTotal: 0,
-        },
-    }))
-  }
->
-  장바구니 비우기
-</button>
-
-
-
-{cartState.items.length === 0 ? (
-  <p>비어있음</p>
-) : (
-  <ul>
-    {cartState.items.map((item, index) => (
-      <li key={index}>
-        {item.name} - {item.price.toLocaleString()}원 
-        {item.selectedMenuOption ? ` / 메뉴: ${item.selectedMenuOption.name}` : ""}
-        {item.selectedSpice
-              ? ` / 맵기: ${item.selectedSpice.name}` : ""} 
-              
-               
-                <>
-              
-                {item.selectedToppings.length > 0
-              &&   "/ 토핑: "  + item.selectedToppings 
-                  .map(t =>  `${t.name}x${t.count} `)
-                  .join(", ")}
-                </>
-               
-              X {item.count}
-          </li>
-    ))}
-     
-  </ul>
-)}
-{cartState.price.itemsTotal}
-
-
-   <Link href="/">메뉴 추가</Link>
-
-
- <Link href="/order">주문하기</Link>
-
-  </div>
-);
-  
+      <div className="mt-8 flex gap-3">
+        <Link href="/" className="rounded-full border border-gray-200 px-4 py-3">
+          메뉴 추가
+        </Link>
+        <Link href="/order" className="rounded-full bg-black px-4 py-3 text-white">
+          주문하기
+        </Link>
+      </div>
+    </div>
+  );
 }
