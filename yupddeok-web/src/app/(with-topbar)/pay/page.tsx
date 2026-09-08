@@ -2,11 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CART_KEY, ORDER_KEY, STORE_KEY } from "@/constants/storageKeys";
-import type { CartState } from "@/types/cart";
+import { ORDER_KEY, STORE_KEY } from "@/constants/storageKeys";
 import type { OrderRecord } from "@/types/order";
-import { createOptionSummary, emptyCartState } from "@/lib/cart";
+import { createOptionSummary } from "@/lib/cart";
 import { readStorage, writeStorage } from "@/lib/storage";
+import { useCartStore } from "@/stores/cartStore";
 
 const deliveryRequests = [
   "문 앞에 두고 노크해주세요",
@@ -29,17 +29,8 @@ const paymentMethods = [
 export default function Pay() {
   const router = useRouter();
 
-  const [cartState] = useState<CartState>(() => {
-    const savedCart = readStorage(CART_KEY, emptyCartState);
-
-    return {
-      ...savedCart,
-      price: {
-        ...savedCart.price,
-        deliveryFee: 3000,
-      },
-    };
-  });
+  const cartState = useCartStore((state) => state.cartState);
+  const resetCartAfterOrder = useCartStore((state) => state.resetAfterOrder);
   const [storeName] = useState(() => readStorage(STORE_KEY, ""));
   const [ownerRequest, setOwnerRequest] = useState("");
   const [saveOwnerRequest, setSaveOwnerRequest] = useState(false);
@@ -82,10 +73,7 @@ export default function Pay() {
     try {
       const prevOrders = readStorage<OrderRecord[]>(ORDER_KEY, []);
       writeStorage(ORDER_KEY, [nextOrder, ...prevOrders]);
-      writeStorage(CART_KEY, {
-        ...emptyCartState,
-        delivery: cartState.delivery,
-      } satisfies CartState);
+      resetCartAfterOrder();
       router.push("/pay/orderCompleted");
     } catch {}
   };

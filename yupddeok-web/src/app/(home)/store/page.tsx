@@ -1,15 +1,24 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { STORE_KEY } from "@/constants/storageKeys";
-import { STORES } from "@/mocks/stores";
-import Image from "next/image";
+import { writeStorage } from "@/lib/storage";
+import { getStores } from "./_api";
 
 export default function Store() {
+  const {
+    data: stores = [],
+    isError,
+    isLoading,
+  } = useQuery({
+    queryKey: ["stores"],
+    queryFn: getStores,
+  });
+
   const saveStore = (name: string) => {
-    try {
-      localStorage.setItem(STORE_KEY, name);
-    } catch {}
+    writeStorage(STORE_KEY, name);
   };
 
   const handlePick = (name: string) => {
@@ -18,12 +27,25 @@ export default function Store() {
 
   return (
     <section className="flex flex-col gap-6 px-5 pb-10">
-          <h1 className="text-[20px] font-bold text-[var(--text)]">
-            배달 매장 찾기
-          </h1>
+      <h1 className="text-[20px] font-bold text-[var(--text)]">
+        배달 매장 찾기
+      </h1>
 
-      <ul className="flex flex-col gap-3">
-        {STORES.map((store) => {
+      {isLoading ? (
+        <div className="rounded-[10px] border border-gray-200 bg-white px-5 py-8 text-center text-sm text-gray-500">
+          매장 정보를 불러오는 중...
+        </div>
+      ) : null}
+
+      {isError ? (
+        <div className="rounded-[10px] border border-gray-200 bg-white px-5 py-8 text-center text-sm text-gray-500">
+          매장 정보를 불러오지 못했습니다.
+        </div>
+      ) : null}
+
+      {!isLoading && !isError ? (
+        <ul className="flex flex-col gap-3">
+          {stores.map((store) => {
           const isOpen = store.open;
 
           return (
@@ -61,14 +83,25 @@ export default function Store() {
                     </span>
                   </div>
                   <div className="flex items-center gap-6 text-[14px]">
-                  <span className="flex items-center gap-3">
-                    <Image src = "/pick.png" alt={"거리"} width={15.33} height={18.52}/>  {store.distance}
-                  </span>
-                   <span className="flex items-center gap-3">
-                    <Image src = "/DeliveryPee.png" alt={"배달료"} width={23} height={16}/>  {store.pee}원
-                   </span>
-                   </div>
-                 
+                    <span className="flex items-center gap-3">
+                      <Image
+                        src="/assets/store/pick.png"
+                        alt="거리"
+                        width={15.33}
+                        height={18.52}
+                      />
+                      {store.distance}
+                    </span>
+                    <span className="flex items-center gap-3">
+                      <Image
+                        src="/assets/store/DeliveryPee.png"
+                        alt="배달료"
+                        width={23}
+                        height={16}
+                      />
+                      {store.pee}원
+                    </span>
+                  </div>
                 </div>
 
                 <span
@@ -81,8 +114,9 @@ export default function Store() {
               </Link>
             </li>
           );
-        })}
-      </ul>
+          })}
+        </ul>
+      ) : null}
     </section>
   );
 }

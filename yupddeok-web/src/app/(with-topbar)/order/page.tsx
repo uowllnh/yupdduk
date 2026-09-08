@@ -3,29 +3,21 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CART_KEY } from "@/constants/storageKeys";
 import {
-  clearCart,
   createOptionSummary,
-  emptyCartState,
   getCartItemUnitPrice,
-  removeCartItem,
-  updateCartItemQuantity,
 } from "@/lib/cart";
-import { readStorage, writeStorage } from "@/lib/storage";
-import type { CartState } from "@/types/cart";
+import { useCartStore } from "@/stores/cartStore";
 import type { MenuSummary } from "@/types/menu";
+import styles from "./page.module.css";
 
 export default function Order() {
-  const [cartState, setCartState] = useState<CartState>(() =>
-    readStorage(CART_KEY, emptyCartState),
-  );
+  const cartState = useCartStore((state) => state.cartState);
+  const clearCart = useCartStore((state) => state.clear);
+  const removeItem = useCartStore((state) => state.removeItem);
+  const updateItemQuantity = useCartStore((state) => state.updateItemQuantity);
   const [isEditing, setIsEditing] = useState(false);
   const [menuImageMap, setMenuImageMap] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    writeStorage(CART_KEY, cartState);
-  }, [cartState]);
 
   useEffect(() => {
     let ignore = false;
@@ -53,23 +45,23 @@ export default function Order() {
   }, []);
 
   return (
-    <div className="px-6 pb-44">
-      <div className="flex items-center justify-between">
-        <h1 className="text-[24px] font-bold">장바구니</h1>
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>장바구니</h1>
         {cartState.items.length > 0 ? (
-          <div className="flex items-center gap-3">
+          <div className={styles.actions}>
             {isEditing ? (
               <button
                 type="button"
-                className="text-sm font-semibold text-red-400"
-                onClick={() => setCartState((prev) => clearCart(prev))}
+                className={styles.deleteAllButton}
+                onClick={clearCart}
               >
                 전체 삭제
               </button>
             ) : null}
             <button
               type="button"
-              className="text-sm font-semibold text-gray-400"
+              className={styles.editButton}
               onClick={() => setIsEditing((prev) => !prev)}
             >
               {isEditing ? "완료" : "편집하기"}
@@ -79,20 +71,17 @@ export default function Order() {
       </div>
 
       {cartState.items.length === 0 ? (
-        <div className="mt-10 rounded-3xl border border-dashed border-gray-200 px-6 py-12 text-center">
-          <p className="text-lg font-bold">장바구니가 비어있어요</p>
-          <p className="mt-2 text-sm text-gray-500">
+        <div className={styles.emptyState}>
+          <p className={styles.emptyTitle}>장바구니가 비어있어요</p>
+          <p className={styles.emptyDescription}>
             먹고 싶은 메뉴를 담아 주문을 시작해보세요.
           </p>
-          <Link
-            href="/"
-            className="mt-6 inline-flex rounded-full bg-black px-5 py-3 font-bold text-white"
-          >
+          <Link href="/" className={styles.menuLink}>
             메뉴 보러가기
           </Link>
         </div>
       ) : (
-        <div className="mt-6 space-y-4">
+        <div className={styles.cartList}>
           {cartState.items.map((item, index) => {
             const itemImage = item.image ?? menuImageMap[item.id];
             const optionSummary = createOptionSummary(item);
@@ -100,28 +89,26 @@ export default function Order() {
             return (
               <div
                 key={item.key ?? `${item.id}-${index}`}
-                className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm"
+                className={styles.cartItem}
               >
-                <div className="flex gap-4">
-                  <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gray-50">
+                <div className={styles.cartItemContent}>
+                  <div className={styles.imageBox}>
                     {itemImage ? (
                       <Image
                         src={itemImage}
                         alt={item.name}
                         width={88}
                         height={88}
-                        className="object-contain"
+                        className={styles.itemImage}
                       />
                     ) : null}
                   </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3">
+                  <div className={styles.itemBody}>
+                    <div className={styles.itemHeader}>
                       <div>
-                        <p className="text-[18px] font-bold text-black">
-                          {item.name}
-                        </p>
-                        <p className="mt-1 text-sm text-gray-500">
+                        <p className={styles.itemName}>{item.name}</p>
+                        <p className={styles.itemOption}>
                           {optionSummary || "기본 옵션"}
                         </p>
                       </div>
@@ -129,44 +116,32 @@ export default function Order() {
                       {isEditing ? (
                         <button
                           type="button"
-                          className="text-sm font-semibold text-gray-300"
-                          onClick={() =>
-                            setCartState((prev) => removeCartItem(prev, index))
-                          }
+                          className={styles.removeButton}
+                          onClick={() => removeItem(index)}
                         >
                           삭제
                         </button>
                       ) : null}
                     </div>
 
-                    <div className="mt-4 flex items-center justify-between gap-3">
-                      <p className="text-[18px] font-bold">
+                    <div className={styles.itemFooter}>
+                      <p className={styles.itemPrice}>
                         {(getCartItemUnitPrice(item) * item.count).toLocaleString()}원
                       </p>
 
-                      <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-gray-50 px-2 py-2">
+                      <div className={styles.quantityControl}>
                         <button
                           type="button"
-                          className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-base font-bold"
-                          onClick={() =>
-                            setCartState((prev) =>
-                              updateCartItemQuantity(prev, index, -1),
-                            )
-                          }
+                          className={`${styles.quantityButton} ${styles.decreaseButton}`}
+                          onClick={() => updateItemQuantity(index, -1)}
                         >
                           -
                         </button>
-                        <span className="min-w-5 text-center font-bold">
-                          {item.count}
-                        </span>
+                        <span className={styles.quantityValue}>{item.count}</span>
                         <button
                           type="button"
-                          className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-base font-bold text-white"
-                          onClick={() =>
-                            setCartState((prev) =>
-                              updateCartItemQuantity(prev, index, 1),
-                            )
-                          }
+                          className={`${styles.quantityButton} ${styles.increaseButton}`}
+                          onClick={() => updateItemQuantity(index, 1)}
                         >
                           +
                         </button>
@@ -181,19 +156,16 @@ export default function Order() {
       )}
 
       {cartState.items.length > 0 ? (
-        <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[375px] -translate-x-1/2 border-t border-gray-200 bg-white px-6 pb-6 pt-4 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
-          <div className="flex flex-col gap-4">
+        <div className={styles.checkoutBar}>
+          <div className={styles.checkoutContent}>
             <div>
-              <p className="text-sm text-gray-500">총 주문 금액</p>
-              <p className="mt-1 text-[28px] font-bold">
+              <p className={styles.totalLabel}>총 주문 금액</p>
+              <p className={styles.totalPrice}>
                 {cartState.price.itemsTotal.toLocaleString()}원
               </p>
             </div>
 
-            <Link
-              href="/pay"
-              className="flex w-full items-center justify-center rounded-full bg-black px-5 py-4 text-center font-bold text-white"
-            >
+            <Link href="/pay" className={styles.checkoutLink}>
               주문하기
             </Link>
           </div>

@@ -1,11 +1,6 @@
 import { ADDRESS_KEY } from "@/constants/storageKeys";
 import { readStorage } from "@/lib/storage";
-
-export type SavedAddress = {
-  id?: string;
-  add: string;
-  detailAdd?: string;
-};
+import type { SavedAddress } from "@/types/address";
 
 export function readSavedAddresses() {
   return readStorage<SavedAddress[]>(ADDRESS_KEY, []);

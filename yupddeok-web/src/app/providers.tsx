@@ -3,12 +3,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { startWorker } from "@/mocks/startWorker";
+import { useCartStore } from "@/stores/cartStore";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient());
   const [mswReady, setMswReady] = useState(
     process.env.NEXT_PUBLIC_API_MOCKING !== "enabled",
   );
+
+  useEffect(() => {
+    void useCartStore.persist.rehydrate();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

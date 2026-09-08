@@ -43,7 +43,7 @@ export default function ToppingSelector({
 
   return (
     <section className="space-y-3">
-      <h3 className="text-[17px] font-bold">
+      <h3 className="mt-10 text-[17px] font-bold">
         {(type === "A" || type === "B") && (
           <>
             추가 토핑 (선택) ({selected.length}/{max})

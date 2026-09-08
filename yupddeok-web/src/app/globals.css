@@ -1,19 +1,12 @@
-
 @import "tailwindcss";
 
-
-
-:root {
-  --primary: #DF1D25;
-  --primary-yellow: #F7BF00;
-    --primary-orange: #FB6D3A;
-  --bg: #fff7f5;
-  --text: #101E20;
-  --subtext: #666666;
-  --card: #ffffff;
-  --border: #f0d9d5;
-}
-
-body {
-  -webkit-tap-highlight-color: transparent;
+@theme {
+  --color-primary: #df1d25;
+  --color-primary-yellow: #f7bf00;
+  --color-primary-orange: #fb6d3a;
+  --color-app-bg: #fff7f5;
+  --color-app-text: #101e20;
+  --color-subtext: #666666;
+  --color-card: #ffffff;
+  --color-border-soft: #f0d9d5;
 }

@@ -61,19 +61,21 @@ export default function FoodPage() {
         />
       ) : null}
 
-      <div className="mt-6 grid grid-cols-2 gap-3">
-        <Link
-          href="/order"
-          className="rounded-2xl bg-black px-4 py-3 text-center font-bold text-white"
-        >
-          주문하기
-        </Link>
-        <Link
-          href="/cart"
-          className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-center font-bold text-black"
-        >
-          장바구니
-        </Link>
+      <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-[375px] -translate-x-1/2 rounded-[24px] border-t border-gray-200 bg-white px-6 pt-4 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]">
+        <div className="grid grid-cols-2 gap-4">
+          <Link
+            href="/order"
+            className="rounded-2xl bg-black px-4 py-3 text-center font-bold text-white"
+          >
+            주문하기
+          </Link>
+          <Link
+            href="/order"
+            className="rounded-2xl border border-gray-200 bg-white px-4 py-3 text-center font-bold text-black"
+          >
+            장바구니
+          </Link>
+        </div>
       </div>
     </section>
   );

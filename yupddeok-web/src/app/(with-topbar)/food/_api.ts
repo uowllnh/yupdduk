@@ -1,11 +1,22 @@
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import type { MenuSummary } from "@/types/menu";
 
 export async function getMenus() {
-  const response = await fetch("/api/menus");
+  const menusQuery = query(collection(db, "menus"), orderBy("order", "asc"));
+  const snapshot = await getDocs(menusQuery);
 
-  if (!response.ok) {
-    throw new Error("메뉴 목록을 불러오지 못했습니다.");
-  }
+  return snapshot.docs.map((doc) => {
+    const data = doc.data();
 
-  return (await response.json()) as MenuSummary[];
+    return {
+      id: doc.id,
+      name: data.name,
+      section: data.section,
+      sectionLabel: data.sectionLabel,
+      price: data.price,
+      image: data.image,
+      description: data.description,
+    } satisfies MenuSummary;
+  });
 }

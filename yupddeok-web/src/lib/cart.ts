@@ -14,11 +14,66 @@ export function getSelectedToppingsPrice(toppings: SelectedTopping[]) {
 
 export function getCartItemUnitPrice(item: CartItem) {
   const toppingsTotal = (item.selectedToppings ?? []).reduce(
-    (sum, topping) => sum + topping.price * topping.count,
+    (sum, topping) =>
+      sum +
+      (Number.isFinite(topping.price) ? topping.price : 0) *
+        (Number.isFinite(topping.count) ? topping.count : 0),
     0,
   );
 
-  return item.price + toppingsTotal;
+  return (Number.isFinite(item.price) ? item.price : 0) + toppingsTotal;
+}
+
+function calculateItemsTotal(items: CartItem[]) {
+  return items.reduce(
+    (sum, item) =>
+      sum +
+      getCartItemUnitPrice(item) *
+        (Number.isFinite(item.count) ? item.count : 0),
+    0,
+  );
+}
+
+function withRecalculatedPrice(state: CartState, items: CartItem[]): CartState {
+  const itemsTotal = calculateItemsTotal(items);
+
+  return {
+    ...state,
+    items,
+    price: {
+      itemsTotal,
+      deliveryFee: Number.isFinite(state.price?.deliveryFee)
+        ? state.price.deliveryFee
+        : 0,
+      discount: Number.isFinite(state.price?.discount)
+        ? state.price.discount
+        : 0,
+      finalTotal: itemsTotal,
+    },
+  };
+}
+
+export function normalizeCartState(value: unknown): CartState {
+  if (!value || typeof value !== "object") return emptyCartState;
+
+  const state = value as Partial<CartState>;
+  const items = Array.isArray(state.items) ? (state.items as CartItem[]) : [];
+
+  return withRecalculatedPrice(
+    {
+      ...emptyCartState,
+      ...state,
+      delivery:
+        state.delivery?.type === "PICKUP" || state.delivery?.type === "DELIVERY"
+          ? state.delivery
+          : emptyCartState.delivery,
+      price: {
+        ...emptyCartState.price,
+        ...state.price,
+      },
+    },
+    items,
+  );
 }
 
 export function buildCartItemKey(params: {
@@ -63,7 +118,6 @@ export function addCartItem(
   quantity: number,
 ): CartState {
   const existingIndex = state.items.findIndex((currentItem) => currentItem.key === item.key);
-  const unitTotal = getCartItemUnitPrice(item);
 
   if (existingIndex >= 0) {
     const nextItems = [...state.items];
@@ -72,26 +126,13 @@ export function addCartItem(
       count: nextItems[existingIndex].count + quantity,
     };
 
-    return {
-      ...state,
-      items: nextItems,
-      price: {
-        ...state.price,
-        itemsTotal: state.price.itemsTotal + unitTotal * quantity,
-        finalTotal: state.price.finalTotal + unitTotal * quantity,
-      },
-    };
+    return withRecalculatedPrice(state, nextItems);
   }
 
-  return {
-    ...state,
-    items: [...state.items, { ...item, count: quantity }],
-    price: {
-      ...state.price,
-      itemsTotal: state.price.itemsTotal + unitTotal * quantity,
-      finalTotal: state.price.finalTotal + unitTotal * quantity,
-    },
-  };
+  return withRecalculatedPrice(state, [
+    ...state.items,
+    { ...item, count: quantity },
+  ]);
 }
 
 export function updateCartItemQuantity(
@@ -111,34 +152,17 @@ export function updateCartItemQuantity(
     count: nextCount,
   };
 
-  const unitTotal = getCartItemUnitPrice(currentItem);
-
-  return {
-    ...state,
-    items: nextItems,
-    price: {
-      ...state.price,
-      itemsTotal: state.price.itemsTotal + unitTotal * diff,
-      finalTotal: state.price.finalTotal + unitTotal * diff,
-    },
-  };
+  return withRecalculatedPrice(state, nextItems);
 }
 
 export function removeCartItem(state: CartState, itemIndex: number) {
   const removedItem = state.items[itemIndex];
   if (!removedItem) return state;
 
-  const removedTotal = getCartItemUnitPrice(removedItem) * removedItem.count;
-
-  return {
-    ...state,
-    items: state.items.filter((_, index) => index !== itemIndex),
-    price: {
-      ...state.price,
-      itemsTotal: Math.max(0, state.price.itemsTotal - removedTotal),
-      finalTotal: Math.max(0, state.price.finalTotal - removedTotal),
-    },
-  };
+  return withRecalculatedPrice(
+    state,
+    state.items.filter((_, index) => index !== itemIndex),
+  );
 }
 
 export function clearCart(state: CartState): CartState {

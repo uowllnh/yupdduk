@@ -1,3 +1,5 @@
+import type { DocumentMeta } from "./common";
+
 export type MenuSection =
   | "MAIN"
   | "SET"
@@ -9,11 +11,13 @@ export type MenuSection =
 export type SpiceOption = {
   value: string;
   name: string;
+  order?: number;
 };
 
 export type MenuOption = {
   value: string;
   name: string;
+  price?: number;
 };
 
 export type SelectedTopping = {
@@ -65,3 +69,9 @@ export type MenuDetail = {
   spice?: SpiceConfig;
   toppingChoices: ToppingChoice[];
 };
+
+export type MenuDocument = MenuSummary &
+  MenuDetail &
+  DocumentMeta & {
+    isSoldOut?: boolean;
+  };

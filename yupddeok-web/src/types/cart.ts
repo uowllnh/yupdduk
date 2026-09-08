@@ -1,3 +1,18 @@
+import type { PriceSummary } from "./common";
+
+export type SelectedCartOption = {
+  value: string;
+  name: string;
+  price?: number;
+};
+
+export type CartItemTopping = {
+  value?: string;
+  name: string;
+  price: number;
+  count: number;
+};
+
 // 장바구니 아이템 하나
 export type CartItem = {
   key?: string;
@@ -7,40 +22,27 @@ export type CartItem = {
   price: number;
   count: number;
 
-  selectedMenuOption?: {
-    value: string;
-    name: string;
-  };
+  selectedMenuOption?: SelectedCartOption;
 
-  selectedSpice?: {
-    value: string;
-    name: string;
-  };
+  selectedSpice?: SelectedCartOption;
 
-  selectedToppings: {
-    name: string;
-    price: number;
-    count: number;
-  }[];
+  selectedToppings: CartItemTopping[];
 
   toppingsPrice: number;
+};
+
+export type DeliveryInfo = {
+  type: "DELIVERY" | "PICKUP";
+  address?: string;
 };
 
 // 결제 전 "임시 주문서"
 export type CartState = {
   items: CartItem[];
 
-  delivery: {
-    type: "DELIVERY" | "PICKUP";
-    address?: string;
-  };
+  delivery: DeliveryInfo;
 
   requestNote?: string; //주문 상세정보 기입란
 
-  price: {
-    itemsTotal: number;
-    deliveryFee: number;
-    discount: number;
-    finalTotal: number;
-  };
+  price: PriceSummary;
 };

@@ -5,6 +5,10 @@ export function readStorage<T>(key: string, fallback: T): T {
     const rawValue = localStorage.getItem(key);
     return rawValue ? (JSON.parse(rawValue) as T) : fallback;
   } catch {
+    if (typeof fallback === "string") {
+      return (localStorage.getItem(key) ?? fallback) as T;
+    }
+
     return fallback;
   }
 }

@@ -7,7 +7,7 @@ export default function BackButton() {
 
   return (
     <button onClick={() => router.back()}>
-      <Image src="/back-bt.png" alt="뒤로가기" width={45} height={45} />
+      <Image src="/icons/navigation/back-bt.png" alt="뒤로가기" width={45} height={45} />
     </button>
   );
 }

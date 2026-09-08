@@ -24,7 +24,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           onClick={() => setIsMenuOpen(true)}
           className="flex h-11 w-11 items-center justify-center rounded-full bg-gray-200"
         >
-          <Image src="/menu_icon.png" alt="전체 메뉴" width={18} height={16} />
+          <Image src="/icons/navigation/menu_icon.png" alt="전체 메뉴" width={18} height={16} />
         </button>
 
         <div className="flex flex-1 justify-between">
@@ -41,7 +41,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             href="/order"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-black"
           >
-            <Image src="/cart_Icon.png" alt="장바구니" width={20} height={20} />
+            <Image src="/icons/navigation/cart_Icon.png" alt="장바구니" width={20} height={20} />
           </Link>
         </div>
       </div>
